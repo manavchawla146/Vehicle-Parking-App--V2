@@ -10,9 +10,10 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5000', // Flask backend
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        // REMOVE or comment out the rewrite line!
+        // rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
   }

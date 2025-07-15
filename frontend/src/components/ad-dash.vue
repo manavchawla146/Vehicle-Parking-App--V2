@@ -99,61 +99,60 @@
         </div>
       </div>
 
-      <!-- Slot Modal -->
-      <div v-if="slotModalVisible" class="modal-overlay" @click.self="closeSlotModal">
+      <!-- Occupied Slot Modal -->
+      <div v-if="occupiedSlotModalVisible" class="modal-overlay" @click.self="closeOccupiedSlotModal">
         <div class="modal-content">
           <div class="modal-header">
-            <h3>Slot Details</h3>
+            <h3>Occupied Slot Details</h3>
           </div>
           <div class="modal-body">
             <p>Parking Lot: {{ selectedLot.primeLocation }}</p>
             <p>Slot Number: {{ selectedSlot }}</p>
-            <p>Status: {{ selectedLot.occupiedSpots.includes(selectedSlot) ? 'Occupied' : 'Available' }}</p>
+            <p>Status: Occupied</p>
+            <div class="form-group">
+              <label>Vehicle ID:</label>
+              <input v-model="getSlotDetails(selectedSlot).vehicleId" type="text" class="modal-input" readonly />
+            </div>
+            <div class="form-group">
+              <label>Occupation Time:</label>
+              <input v-model="getSlotDetails(selectedSlot).occupationTime" type="text" class="modal-input" readonly />
+            </div>
           </div>
           <div class="modal-footer">
-            <button v-if="selectedLot.occupiedSpots.includes(selectedSlot)" class="action-btn modal-detail-btn" @click="openDetailModal; closeSlotModal()">Detail</button>
-            <button v-else class="action-btn modal-delete-btn" @click="deleteSlot(selectedLot, selectedSlot); closeSlotModal()">Delete</button>
-            <button class="action-btn modal-cancel-btn" @click="closeSlotModal">Close</button>
+            <button class="action-btn modal-cancel-btn" @click="closeOccupiedSlotModal">Close</button>
           </div>
         </div>
       </div>
 
-      <!-- Detail Modal -->
-      <div v-if="detailModalVisible" class="modal-overlay" @click.self="closeDetailModal">
+      <!-- Available Slot Modal -->
+      <div v-if="availableSlotModalVisible" class="modal-overlay" @click.self="closeAvailableSlotModal">
         <div class="modal-content">
           <div class="modal-header">
-            <h3>Slot Details</h3>
+            <h3>Available Slot Details</h3>
           </div>
           <div class="modal-body">
-            <div class="form-group">
-              <label>Prime Location:</label>
-              <input v-model="selectedLot.primeLocation" type="text" class="modal-input" readonly />
-            </div>
-            <div class="form-group">
-              <label>Address:</label>
-              <textarea v-model="selectedLot.address" class="modal-textarea" readonly></textarea>
-            </div>
-            <div class="form-group">
-              <label>Pin Code:</label>
-              <input v-model="selectedLot.pinCode" type="text" class="modal-input" readonly />
-            </div>
-            <div class="form-group">
-              <label>Price (per hour):</label>
-              <input v-model.number="selectedLot.pricePerHour" type="number" class="modal-input" readonly />
-            </div>
-            <div class="form-group">
-              <label>Maximum Spots:</label>
-              <input v-model.number="selectedLot.total" type="number" class="modal-input" readonly />
-            </div>
-            <div class="form-group">
-              <label>Occupied Spots:</label>
-              <input v-model.number="selectedLot.occupied" type="number" class="modal-input" readonly />
-            </div>
+            <p>Parking Lot: {{ selectedLot.primeLocation }}</p>
             <p>Slot Number: {{ selectedSlot }}</p>
-            <p>Status: {{ selectedLot.occupiedSpots.includes(selectedSlot) ? 'Occupied' : 'Available' }}</p>
+            <p>Status: Available</p>
           </div>
           <div class="modal-footer">
-            <button class="action-btn modal-cancel-btn" @click="closeDetailModal">Close</button>
+            <button class="action-btn modal-delete-btn" @click="deleteSlot(selectedLot, selectedSlot); closeAvailableSlotModal()">Delete</button>
+            <button class="action-btn modal-cancel-btn" @click="closeAvailableSlotModal">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deletion Restriction Modal -->
+      <div v-if="deletionRestrictionModalVisible" class="modal-overlay" @click.self="closeDeletionRestrictionModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Deletion Restricted</h3>
+          </div>
+          <div class="modal-body">
+            <p>You can't delete parking lot as it has an occupied parking slot.</p>
+          </div>
+          <div class="modal-footer">
+            <button class="action-btn modal-cancel-btn" @click="closeDeletionRestrictionModal">Close</button>
           </div>
         </div>
       </div>
@@ -173,8 +172,9 @@ export default {
     return {
       showModal: false,
       editModalVisible: false,
-      slotModalVisible: false,
-      detailModalVisible: false,
+      occupiedSlotModalVisible: false,
+      availableSlotModalVisible: false,
+      deletionRestrictionModalVisible: false,
       newLot: {
         primeLocation: '',
         address: '',
@@ -196,8 +196,8 @@ export default {
       selectedLot: {},
       selectedSlot: null,
       parkingLots: JSON.parse(localStorage.getItem('parkingLots')) || [
-        { id: 1, primeLocation: 'Velachery Lot', address: '123 Velachery St', pinCode: '600042', pricePerHour: 20, total: 15, occupied: 3, occupiedSpots: [2, 5, 10], location: 'Velachery' },
-        { id: 2, primeLocation: 'Anna Nagar Lot', address: '456 Anna Nagar Rd', pinCode: '600040', pricePerHour: 25, total: 10, occupied: 4, occupiedSpots: [1, 3, 6, 8], location: 'Anna Nagar' },
+        { id: 1, primeLocation: 'Velachery Lot', address: '123 Velachery St', pinCode: '600042', pricePerHour: 20, total: 15, occupied: 3, occupiedSpots: [2, 5, 10], location: 'Velachery', slotDetails: { 2: { vehicleId: 'VH001', occupationTime: '2025-07-15 14:00' }, 5: { vehicleId: 'VH002', occupationTime: '2025-07-15 14:30' }, 10: { vehicleId: 'VH003', occupationTime: '2025-07-15 15:00' } } },
+        { id: 2, primeLocation: 'Anna Nagar Lot', address: '456 Anna Nagar Rd', pinCode: '600040', pricePerHour: 25, total: 10, occupied: 4, occupiedSpots: [1, 3, 6, 8], location: 'Anna Nagar', slotDetails: { 1: { vehicleId: 'AN001', occupationTime: '2025-07-15 13:00' }, 3: { vehicleId: 'AN002', occupationTime: '2025-07-15 13:30' }, 6: { vehicleId: 'AN003', occupationTime: '2025-07-15 14:00' }, 8: { vehicleId: 'AN004', occupationTime: '2025-07-15 14:30' } } },
       ],
     };
   },
@@ -279,7 +279,8 @@ export default {
           total: parseInt(this.editLotData.total),
           occupied: parseInt(this.editLotData.occupied),
           occupiedSpots: [...this.editLotData.occupiedSpots],
-          location: this.editLotData.primeLocation
+          location: this.editLotData.primeLocation,
+          slotDetails: this.parkingLots[index].slotDetails || {}
         };
         
         console.log('Updating with:', updatedLot);
@@ -294,7 +295,7 @@ export default {
     deleteLot(lot) {
       // Prevent deletion if there are occupied slots
       if (lot.occupied > 0) {
-        console.log(`Cannot delete ${lot.primeLocation}: Contains occupied slots.`);
+        this.deletionRestrictionModalVisible = true;
         return;
       }
       
@@ -318,6 +319,7 @@ export default {
         occupied: occupiedCount,
         occupiedSpots: Array.from({ length: occupiedCount }, (_, i) => i + 1),
         location: this.newLot.primeLocation,
+        slotDetails: {}
       });
       
       this.saveParkingLots();
@@ -381,18 +383,19 @@ export default {
     openSlotModal(lot, slot) {
       this.selectedLot = { ...lot };
       this.selectedSlot = slot;
-      this.slotModalVisible = true;
+      if (lot.occupiedSpots.includes(slot)) {
+        this.occupiedSlotModalVisible = true;
+      } else {
+        this.availableSlotModalVisible = true;
+      }
     },
-    closeSlotModal() {
-      this.slotModalVisible = false;
+    closeOccupiedSlotModal() {
+      this.occupiedSlotModalVisible = false;
       this.selectedLot = {};
       this.selectedSlot = null;
     },
-    openDetailModal() {
-      this.detailModalVisible = true;
-    },
-    closeDetailModal() {
-      this.detailModalVisible = false;
+    closeAvailableSlotModal() {
+      this.availableSlotModalVisible = false;
       this.selectedLot = {};
       this.selectedSlot = null;
     },
@@ -408,10 +411,19 @@ export default {
         updatedLot.total -= 1; // Decrease total count
         updatedLot.occupiedSpots = updatedLot.occupiedSpots.filter(s => s !== slot && s <= updatedLot.total); // Adjust occupied spots
         updatedLot.occupied = updatedLot.occupiedSpots.length; // Update occupied count
+        updatedLot.slotDetails = Object.fromEntries(
+          Object.entries(updatedLot.slotDetails || {}).filter(([key]) => parseInt(key) !== slot)
+        );
         this.parkingLots.splice(index, 1, updatedLot);
         this.saveParkingLots();
         console.log(`Deleted slot ${slot} from ${lot.primeLocation}`);
       }
+    },
+    closeDeletionRestrictionModal() {
+      this.deletionRestrictionModalVisible = false;
+    },
+    getSlotDetails(slot) {
+      return this.selectedLot.slotDetails?.[slot] || { vehicleId: 'N/A', occupationTime: 'N/A' };
     },
   },
   created() {
@@ -422,4 +434,4 @@ export default {
 
 <style scoped>
 @import url('../assets/ad-dash.css');
-</style>
+</style>  

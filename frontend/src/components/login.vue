@@ -80,24 +80,35 @@ export default {
 
       return isValid;
     },
-    handleLogin() {
+    async handleLogin() {
       if (this.validateForm()) {
-        if (this.email === 'admin@gmail.com' && this.password === 'admin123') {
-          console.log('Admin login successful with:', this.email, this.password);
-          this.$router.push('/ad-dash');
-        } else {
-          /*const storedEmail = localStorage.getItem('userEmail');
-          const storedPassword = localStorage.getItem('userPassword');
-          if (storedEmail === this.email && storedPassword === this.password) {
-            console.log('User login successful with:', this.email, this.password);
-            this.$router.push('/us-dash');
+        try {
+          const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: this.email, password: this.password })
+          });
+          const data = await response.json();
+          if (response.ok) {
+            if (data.role === 'admin') {
+              this.$router.push('/ad-dash');
+            } else {
+              this.$router.push('/us-dash');
+            }
           } else {
-            this.errors.email = 'Invalid email or password';
-            this.errors.password = 'Invalid email or password';
-          }*/ this.$router.push('/us-dash');
+            this.errors.email = data.error || 'Login failed';
+            this.errors.password = data.error || 'Login failed';
+          }
+        } catch (err) {
+          this.errors.email = 'Server error';
+          this.errors.password = 'Server error';
         }
       }
     },
+    async logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      this.$router.push('/login');
+    }
   },
 };
 </script>

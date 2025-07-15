@@ -138,15 +138,29 @@ export default {
 
       return isValid;
     },
-    handleSignup() {
+    async handleSignup() {
       if (this.validateForm()) {
-        localStorage.setItem('userEmail', this.email);
-        localStorage.setItem('userPassword', this.password);
-        localStorage.setItem('userName', this.fullname);
-        localStorage.setItem('userAddress', this.address);
-        localStorage.setItem('userPincode', this.pincode);
-        console.log('Signup successful with:', this.email, this.password, this.fullname, this.address, this.pincode);
-        this.$router.push('/us-dash');
+        try {
+          const response = await fetch('/api/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: this.email,
+              password: this.password,
+              fullname: this.fullname,
+              address: this.address,
+              pincode: this.pincode
+            })
+          });
+          const data = await response.json();
+          if (response.ok) {
+            this.$router.push('/us-dash');
+          } else {
+            this.errors.email = data.error || 'Signup failed';
+          }
+        } catch (err) {
+          this.errors.email = 'Server error';
+        }
       }
     },
   },

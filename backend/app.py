@@ -1,22 +1,10 @@
-from flask import Flask
-from flask_cors import CORS
-from database import db
-from cache import cache
-from celery_worker import make_celery
+from celery_app import create_app, db
+from celery_app import models  # noqa: F401
 
-app = Flask(__name__)
-app.config.from_pyfile('config.py')
-
-CORS(app)
-db.init_app(app)
-cache.init_app(app)
-celery = make_celery(app)
-
-# Register Blueprints here
-# from routes.admin import admin_bp
-# from routes.user import user_bp
-# app.register_blueprint(admin_bp)
-# app.register_blueprint(user_bp)
+app = create_app()
 
 if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()  # Optional: create tables if not exist
+    app.config.from_pyfile('../config.py')
     app.run(debug=True)
