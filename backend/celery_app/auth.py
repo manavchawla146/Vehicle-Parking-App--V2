@@ -14,6 +14,8 @@ def signup():
     email = data.get('email')
     username = data.get('fullname') or data.get('username')
     password = data.get('password')
+    address = data.get('address')
+    pincode = data.get('pincode')
     if not email or not username or not password:
         return jsonify({'error': 'Missing fields'}), 400
     if User.query.filter((User.email == email) | (User.username == username)).first():
@@ -22,10 +24,17 @@ def signup():
         email=email,
         username=username,
         password_hash=generate_password_hash(password),
-        role='user'
+        role='user',
+        address=address,
+        pincode=pincode
     )
     db.session.add(user)
     db.session.commit()
+
+    # Set session for the new user
+    session['user_id'] = user.id
+    session['role'] = user.role
+
     return jsonify({'message': 'User registered successfully'}), 201
 
 @auth_bp.route('/login', methods=['POST'])

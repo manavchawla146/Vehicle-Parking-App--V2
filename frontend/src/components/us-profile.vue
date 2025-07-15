@@ -22,8 +22,7 @@
             <span>{{ user.pincode }}</span>
           </div>
           <div class="detail-group">
-            <label>Password:</label>
-            <span>********</span>
+            
           </div>
           <button class="action-btn edit-btn" @click="enableEditing">Edit Profile</button>
         </div>
@@ -45,12 +44,11 @@
             <input v-model="user.pincode" type="text" class="profile-input" />
           </div>
           <div class="form-group">
-            <label>Password:</label>
-            <input v-model="user.password" type="password" class="profile-input" />
+            
           </div>
           <div class="button-group">
             <button class="action-btn save-btn" @click="saveChanges">Save</button>
-            <button class="action-btn cancel-btn" @click="cancelEditing">Cancel</button>
+            <button class="action-btn save-btn" @click="cancelEditing">Cancel</button>
           </div>
         </div>
       </div>
@@ -86,25 +84,53 @@ export default {
       this.isEditing = false;
       this.loadUserData();
     },
-    saveChanges() {
+    async saveChanges() {
       if (this.validateForm()) {
-        // Save logic here (removed localStorage for Claude compatibility)
-        this.isEditing = false;
-        console.log('Profile updated:', this.user);
+        try {
+          const response = await fetch('/api/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: this.user.name,
+              email: this.user.email,
+              address: this.user.address,
+              pincode: this.user.pincode
+            })
+          });
+          const data = await response.json();
+          if (response.ok) {
+            this.isEditing = false;
+            // Optionally reload user data from server
+            this.loadUserData();
+          } else {
+            alert(data.error || 'Failed to update profile');
+          }
+        } catch (err) {
+          alert('Server error');
+        }
       }
     },
-    loadUserData() {
-      // Load user data logic here
-      this.user = {
-        name: 'John Doe',
-        email: 'user@example.com',
-        address: '123 Main St',
-        pincode: '12345',
-        password: 'password123',
-      };
+    async loadUserData() {
+      try {
+        const response = await fetch('/api/profile');
+        const data = await response.json();
+        if (response.ok) {
+          this.user = {
+            name: data.name,
+            email: data.email,
+            address: data.address,
+            pincode: data.pincode,
+          };
+        } else {
+          // Handle not logged in or error
+          this.$router.push('/login');
+        }
+      } catch (err) {
+        this.$router.push('/login');
+      }
     },
     validateForm() {
-      if (!this.user.name || !this.user.email || !this.user.address || !this.user.pincode || !this.user.password) {
+      if (!this.user.name || !this.user.email || !this.user.address || !this.user.pincode) {
         alert('Please fill all fields');
         return false;
       }

@@ -93,8 +93,8 @@ export default {
             if (data.role === 'admin') {
               this.$router.push('/ad-dash');
             } else {
-              this.$router.push('/us-dash');
-            }
+            this.$router.push('/us-dash');
+              }
           } else {
             this.errors.email = data.error || 'Login failed';
             this.errors.password = data.error || 'Login failed';
