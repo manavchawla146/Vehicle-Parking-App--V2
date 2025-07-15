@@ -1,0 +1,426 @@
+<template>
+  <div class="container">
+    <div class="dash-box">
+      <h2><i class="fas fa-shield-alt"></i> Admin Dashboard</h2>
+      <AdminNavbar />
+      <!-- Parking Lots Section -->
+      <h3>Parking Lots</h3>
+      <div class="parking-lots">
+        <div v-for="lot in parkingLots" :key="lot.id" class="parking-card">
+          <h4>{{ lot.primeLocation }} <span>(Occupied: {{ lot.occupied }}/{{ lot.total }})</span></h4>
+          <div class="button-group">
+            <button class="action-btn edit-btn" @click="openEditModal(lot)">Edit</button>
+            <button class="action-btn delete-btn" @click="deleteLot(lot)">Delete</button>
+          </div>
+          <div class="parking-grid">
+            <span v-for="n in lot.total" :key="n" :class="['parking-spot', { occupied: lot.occupiedSpots.includes(n) }]" @click="openSlotModal(lot, n)">
+              {{ lot.occupiedSpots.includes(n) ? 'O' : 'A' }}
+            </span>
+          </div>
+        </div>
+        <button class="add-btn" @click="showModal = true">+ Add Lot</button>
+      </div>
+
+      <!-- Modal for Adding New Parking Lot -->
+      <div v-if="showModal" class="modal-overlay" @click.self="closeAddModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>New Parking Lot</h3>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Prime Location Name :</label>
+              <input v-model="newLot.primeLocation" type="text" class="modal-input" placeholder="Enter location name" />
+            </div>
+            <div class="form-group">
+              <label>Address :</label>
+              <textarea v-model="newLot.address" class="modal-textarea" placeholder="Enter address"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Pin code :</label>
+              <input v-model="newLot.pinCode" type="text" class="modal-input" placeholder="Enter pin code" />
+            </div>
+            <div class="form-group">
+              <label>Price(per hour):</label>
+              <input v-model.number="newLot.pricePerHour" type="number" class="modal-input" placeholder="Enter price" />
+            </div>
+            <div class="form-group">
+              <label>Maximum spots :</label>
+              <input v-model.number="newLot.maxSpots" type="number" class="modal-input" placeholder="Enter maximum spots" @input="updateNewOccupiedSpots" />
+            </div>
+            <div class="form-group">
+              <label>Occupied spots :</label>
+              <input v-model.number="newLot.occupied" type="number" class="modal-input" :max="newLot.maxSpots" @input="updateNewOccupiedSpots" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="action-btn modal-add-btn" @click="addNewLot">Add</button>
+            <button class="action-btn modal-cancel-btn" @click="closeAddModal">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal for Editing Parking Lot -->
+      <div v-if="editModalVisible" class="modal-overlay" @click.self="closeEditModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Edit Parking Lot</h3>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Prime Location Name :</label>
+              <input v-model="editLotData.primeLocation" type="text" class="modal-input" />
+            </div>
+            <div class="form-group">
+              <label>Address :</label>
+              <textarea v-model="editLotData.address" class="modal-textarea"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Pin code :</label>
+              <input v-model="editLotData.pinCode" type="text" class="modal-input" />
+            </div>
+            <div class="form-group">
+              <label>Price(per hour):</label>
+              <input v-model.number="editLotData.pricePerHour" type="number" class="modal-input" />
+            </div>
+            <div class="form-group">
+              <label>Maximum spots :</label>
+              <input v-model.number="editLotData.total" type="number" class="modal-input" @input="updateEditOccupiedSpots" />
+            </div>
+            <div class="form-group">
+              <label>Occupied spots :</label>
+              <input v-model.number="editLotData.occupied" type="number" class="modal-input" :max="editLotData.total" @input="updateEditOccupiedSpots" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="action-btn modal-update-btn" @click="updateLot">Update</button>
+            <button class="action-btn modal-cancel-btn" @click="closeEditModal">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slot Modal -->
+      <div v-if="slotModalVisible" class="modal-overlay" @click.self="closeSlotModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Slot Details</h3>
+          </div>
+          <div class="modal-body">
+            <p>Parking Lot: {{ selectedLot.primeLocation }}</p>
+            <p>Slot Number: {{ selectedSlot }}</p>
+            <p>Status: {{ selectedLot.occupiedSpots.includes(selectedSlot) ? 'Occupied' : 'Available' }}</p>
+          </div>
+          <div class="modal-footer">
+            <button v-if="selectedLot.occupiedSpots.includes(selectedSlot)" class="action-btn modal-detail-btn" @click="openDetailModal">Detail</button>
+            <button v-else class="action-btn modal-delete-btn" @click="deleteSlot">Delete</button>
+            <button class="action-btn modal-cancel-btn" @click="closeSlotModal">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail Modal -->
+      <div v-if="detailModalVisible" class="modal-overlay" @click.self="closeDetailModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Slot Details</h3>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Prime Location:</label>
+              <input v-model="selectedLot.primeLocation" type="text" class="modal-input" readonly />
+            </div>
+            <div class="form-group">
+              <label>Address:</label>
+              <textarea v-model="selectedLot.address" class="modal-textarea" readonly></textarea>
+            </div>
+            <div class="form-group">
+              <label>Pin Code:</label>
+              <input v-model="selectedLot.pinCode" type="text" class="modal-input" readonly />
+            </div>
+            <div class="form-group">
+              <label>Price (per hour):</label>
+              <input v-model.number="selectedLot.pricePerHour" type="number" class="modal-input" readonly />
+            </div>
+            <div class="form-group">
+              <label>Maximum Spots:</label>
+              <input v-model.number="selectedLot.total" type="number" class="modal-input" readonly />
+            </div>
+            <div class="form-group">
+              <label>Occupied Spots:</label>
+              <input v-model.number="selectedLot.occupied" type="number" class="modal-input" readonly />
+            </div>
+            <p>Slot Number: {{ selectedSlot }}</p>
+            <p>Status: {{ selectedLot.occupiedSpots.includes(selectedSlot) ? 'Occupied' : 'Available' }}</p>
+          </div>
+          <div class="modal-footer">
+            <button class="action-btn modal-cancel-btn" @click="closeDetailModal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import AdminNavbar from './ad-nav.vue';
+
+export default {
+  name: 'AdminDashboard',
+  components: {
+    AdminNavbar,
+  },
+  data() {
+    return {
+      showModal: false,
+      editModalVisible: false,
+      slotModalVisible: false,
+      detailModalVisible: false,
+      newLot: {
+        primeLocation: '',
+        address: '',
+        pinCode: '',
+        pricePerHour: '',
+        maxSpots: '',
+        occupied: '',
+      },
+      editLotData: {
+        id: null,
+        primeLocation: '',
+        address: '',
+        pinCode: '',
+        pricePerHour: '',
+        total: '',
+        occupied: '',
+        occupiedSpots: []
+      },
+      selectedLot: {},
+      selectedSlot: null,
+      parkingLots: JSON.parse(localStorage.getItem('parkingLots')) || [
+        { id: 1, primeLocation: 'Velachery Lot', address: '123 Velachery St', pinCode: '600042', pricePerHour: 20, total: 15, occupied: 3, occupiedSpots: [2, 5, 10], location: 'Velachery' },
+        { id: 2, primeLocation: 'Anna Nagar Lot', address: '456 Anna Nagar Rd', pinCode: '600040', pricePerHour: 25, total: 10, occupied: 4, occupiedSpots: [1, 3, 6, 8], location: 'Anna Nagar' },
+      ],
+    };
+  },
+  methods: {
+    openEditModal(lot) {
+      console.log('Opening edit modal for:', lot);
+      this.editLotData = {
+        id: lot.id,
+        primeLocation: lot.primeLocation,
+        address: lot.address,
+        pinCode: lot.pinCode,
+        pricePerHour: lot.pricePerHour,
+        total: lot.total,
+        occupied: lot.occupied,
+        occupiedSpots: [...lot.occupiedSpots]
+      };
+      this.editModalVisible = true;
+    },
+    closeEditModal() {
+      console.log('Closing edit modal');
+      this.editModalVisible = false;
+      this.resetEditData();
+    },
+    closeAddModal() {
+      this.showModal = false;
+      this.resetNewLot();
+    },
+    resetEditData() {
+      this.editLotData = {
+        id: null,
+        primeLocation: '',
+        address: '',
+        pinCode: '',
+        pricePerHour: '',
+        total: '',
+        occupied: '',
+        occupiedSpots: []
+      };
+    },
+    updateEditOccupiedSpots() {
+      const occupied = parseInt(this.editLotData.occupied) || 0;
+      const total = parseInt(this.editLotData.total) || 0;
+      
+      if (occupied > total) {
+        this.editLotData.occupied = total;
+      }
+      
+      this.editLotData.occupiedSpots = Array.from(
+        { length: parseInt(this.editLotData.occupied) || 0 }, 
+        (_, i) => i + 1
+      );
+    },
+    updateNewOccupiedSpots() {
+      const occupied = parseInt(this.newLot.occupied) || 0;
+      const maxSpots = parseInt(this.newLot.maxSpots) || 0;
+      
+      if (occupied > maxSpots) {
+        this.newLot.occupied = maxSpots;
+      }
+    },
+    updateLot() {
+      console.log('Update button clicked');
+      
+      if (!this.validateEditForm()) {
+        console.log('Validation failed');
+        return;
+      }
+      
+      const index = this.parkingLots.findIndex(l => l.id === this.editLotData.id);
+      console.log('Found lot at index:', index);
+      
+      if (index !== -1) {
+        const updatedLot = {
+          id: this.editLotData.id,
+          primeLocation: this.editLotData.primeLocation,
+          address: this.editLotData.address,
+          pinCode: this.editLotData.pinCode,
+          pricePerHour: parseInt(this.editLotData.pricePerHour),
+          total: parseInt(this.editLotData.total),
+          occupied: parseInt(this.editLotData.occupied),
+          occupiedSpots: [...this.editLotData.occupiedSpots],
+          location: this.editLotData.primeLocation
+        };
+        
+        console.log('Updating with:', updatedLot);
+        
+        this.parkingLots.splice(index, 1, updatedLot);
+        this.saveParkingLots();
+        this.closeEditModal();
+        
+        console.log('Updated lot:', updatedLot.primeLocation);
+        alert('Parking lot updated successfully!');
+      } else {
+        console.log('Lot not found');
+        alert('Error: Parking lot not found');
+      }
+    },
+    deleteLot(lot) {
+      if (confirm(`Are you sure you want to delete ${lot.primeLocation}?`)) {
+        this.parkingLots = this.parkingLots.filter(l => l.id !== lot.id);
+        this.saveParkingLots();
+        console.log('Deleted lot:', lot.primeLocation);
+      }
+    },
+    addNewLot() {
+      if (!this.validateForm()) return;
+      
+      const newId = this.parkingLots.length > 0 ? Math.max(...this.parkingLots.map(l => l.id)) + 1 : 1;
+      const occupiedCount = Math.min(parseInt(this.newLot.occupied) || 0, parseInt(this.newLot.maxSpots) || 0);
+      
+      this.parkingLots.push({
+        id: newId,
+        primeLocation: this.newLot.primeLocation,
+        address: this.newLot.address,
+        pinCode: this.newLot.pinCode,
+        pricePerHour: parseInt(this.newLot.pricePerHour),
+        total: parseInt(this.newLot.maxSpots),
+        occupied: occupiedCount,
+        occupiedSpots: Array.from({ length: occupiedCount }, (_, i) => i + 1),
+        location: this.newLot.primeLocation,
+      });
+      
+      this.saveParkingLots();
+      this.closeAddModal();
+      console.log('New lot added:', this.parkingLots[this.parkingLots.length - 1]);
+    },
+    resetNewLot() {
+      this.newLot = {
+        primeLocation: '',
+        address: '',
+        pinCode: '',
+        pricePerHour: '',
+        maxSpots: '',
+        occupied: ''
+      };
+    },
+    validateForm() {
+      const { primeLocation, address, pinCode, pricePerHour, maxSpots, occupied } = this.newLot;
+      
+      if (!primeLocation.trim() || !address.trim() || !pinCode.trim() || !pricePerHour || !maxSpots || occupied === '') {
+        alert('Please fill all fields');
+        return false;
+      }
+      
+      if (isNaN(pinCode) || parseInt(pricePerHour) <= 0 || parseInt(maxSpots) <= 0 || parseInt(occupied) < 0) {
+        alert('Please enter valid numbers for all numeric fields');
+        return false;
+      }
+      
+      if (parseInt(occupied) > parseInt(maxSpots)) {
+        alert('Occupied spots cannot exceed maximum spots');
+        return false;
+      }
+      
+      return true;
+    },
+    validateEditForm() {
+      const { primeLocation, address, pinCode, pricePerHour, total, occupied } = this.editLotData;
+      
+      if (!primeLocation.trim() || !address.trim() || !pinCode.trim() || !pricePerHour || !total || occupied === '') {
+        alert('Please fill all fields');
+        return false;
+      }
+      
+      if (isNaN(pinCode) || parseInt(pricePerHour) <= 0 || parseInt(total) <= 0 || parseInt(occupied) < 0) {
+        alert('Please enter valid numbers for all numeric fields');
+        return false;
+      }
+      
+      if (parseInt(occupied) > parseInt(total)) {
+        alert('Occupied spots cannot exceed maximum spots');
+        return false;
+      }
+      
+      return true;
+    },
+    saveParkingLots() {
+      localStorage.setItem('parkingLots', JSON.stringify(this.parkingLots));
+      console.log('Saved parking lots to localStorage');
+    },
+    openSlotModal(lot, slot) {
+      this.selectedLot = { ...lot };
+      this.selectedSlot = slot;
+      this.slotModalVisible = true;
+    },
+    closeSlotModal() {
+      this.slotModalVisible = false;
+      this.selectedLot = {};
+      this.selectedSlot = null;
+    },
+    openDetailModal() {
+      this.slotModalVisible = false;
+      this.detailModalVisible = true;
+    },
+    closeDetailModal() {
+      this.detailModalVisible = false;
+      this.selectedLot = {};
+      this.selectedSlot = null;
+    },
+    deleteSlot() {
+      if (this.selectedLot.occupiedSpots.includes(this.selectedSlot)) {
+        alert('Cannot delete an occupied slot!');
+        return;
+      }
+      const index = this.parkingLots.findIndex(l => l.id === this.selectedLot.id);
+      if (index !== -1) {
+        const lot = this.parkingLots[index];
+        lot.occupiedSpots = lot.occupiedSpots.filter(s => s !== this.selectedSlot);
+        lot.occupied = lot.occupiedSpots.length;
+        this.parkingLots.splice(index, 1, lot);
+        this.saveParkingLots();
+        this.closeSlotModal();
+        console.log(`Deleted slot ${this.selectedSlot} from ${lot.primeLocation}`);
+        alert('Slot deleted successfully!');
+      }
+    },
+  },
+  created() {
+    console.log('Component created, parking lots:', this.parkingLots);
+  },
+};
+</script>
+
+<style scoped>
+@import url('../assets/ad-dash.css');
+</style>
