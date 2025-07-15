@@ -314,11 +314,12 @@ h4 span {
 }
 
 .modal-cancel-btn {
-  background: linear-gradient(90deg, #3498db, #2980b9);
+  background: linear-gradient(90deg, #e0e0e0, #c0c0c0);
+  color: #333;
 }
 
 .modal-cancel-btn:hover {
-  background: linear-gradient(90deg, #2980b9, #3498db);
+  background: linear-gradient(90deg, #c0c0c0, #e0e0e0);
   transform: translateY(-1px);
 }
 
@@ -337,6 +338,24 @@ h4 span {
 
 .modal-delete-btn:hover {
   background: linear-gradient(90deg, #c0392b, #e74c3c);
+  transform: translateY(-1px);
+}
+
+.modal-confirm-btn {
+  background: linear-gradient(90deg, #1abc9c, #16a085);
+}
+
+.modal-confirm-btn:hover {
+  background: linear-gradient(90deg, #16a085, #1abc9c);
+  transform: translateY(-1px);
+}
+
+.modal-ok-btn {
+  background: linear-gradient(90deg, #3498db, #2980b9);
+}
+
+.modal-ok-btn:hover {
+  background: linear-gradient(90deg, #2980b9, #3498db);
   transform: translateY(-1px);
 }
 
@@ -383,7 +402,7 @@ h4 span {
     flex-direction: column;
     gap: 5px;
   }
-  .modal-add-btn, .modal-update-btn, .modal-cancel-btn, .modal-detail-btn, .modal-delete-btn {
+  .modal-add-btn, .modal-update-btn, .modal-cancel-btn, .modal-detail-btn, .modal-delete-btn, .modal-confirm-btn, .modal-ok-btn {
     width: 100%;
   }
 }

@@ -111,8 +111,8 @@
             <p>Status: {{ selectedLot.occupiedSpots.includes(selectedSlot) ? 'Occupied' : 'Available' }}</p>
           </div>
           <div class="modal-footer">
-            <button v-if="selectedLot.occupiedSpots.includes(selectedSlot)" class="action-btn modal-detail-btn" @click="openDetailModal">Detail</button>
-            <button v-else class="action-btn modal-delete-btn" @click="deleteSlot">Delete</button>
+            <button v-if="selectedLot.occupiedSpots.includes(selectedSlot)" class="action-btn modal-detail-btn" @click="openDetailModal; closeSlotModal()">Detail</button>
+            <button v-else class="action-btn modal-delete-btn" @click="deleteSlot(selectedLot, selectedSlot); closeSlotModal()">Delete</button>
             <button class="action-btn modal-cancel-btn" @click="closeSlotModal">Close</button>
           </div>
         </div>
@@ -287,20 +287,20 @@ export default {
         this.parkingLots.splice(index, 1, updatedLot);
         this.saveParkingLots();
         this.closeEditModal();
-        
-        console.log('Updated lot:', updatedLot.primeLocation);
-        alert('Parking lot updated successfully!');
       } else {
         console.log('Lot not found');
-        alert('Error: Parking lot not found');
       }
     },
     deleteLot(lot) {
-      if (confirm(`Are you sure you want to delete ${lot.primeLocation}?`)) {
-        this.parkingLots = this.parkingLots.filter(l => l.id !== lot.id);
-        this.saveParkingLots();
-        console.log('Deleted lot:', lot.primeLocation);
+      // Prevent deletion if there are occupied slots
+      if (lot.occupied > 0) {
+        console.log(`Cannot delete ${lot.primeLocation}: Contains occupied slots.`);
+        return;
       }
+      
+      this.parkingLots = this.parkingLots.filter(l => l.id !== lot.id);
+      this.saveParkingLots();
+      console.log('Deleted lot:', lot.primeLocation);
     },
     addNewLot() {
       if (!this.validateForm()) return;
@@ -338,17 +338,17 @@ export default {
       const { primeLocation, address, pinCode, pricePerHour, maxSpots, occupied } = this.newLot;
       
       if (!primeLocation.trim() || !address.trim() || !pinCode.trim() || !pricePerHour || !maxSpots || occupied === '') {
-        alert('Please fill all fields');
+        console.log('Please fill all fields');
         return false;
       }
       
       if (isNaN(pinCode) || parseInt(pricePerHour) <= 0 || parseInt(maxSpots) <= 0 || parseInt(occupied) < 0) {
-        alert('Please enter valid numbers for all numeric fields');
+        console.log('Please enter valid numbers for all numeric fields');
         return false;
       }
       
       if (parseInt(occupied) > parseInt(maxSpots)) {
-        alert('Occupied spots cannot exceed maximum spots');
+        console.log('Occupied spots cannot exceed maximum spots');
         return false;
       }
       
@@ -358,17 +358,17 @@ export default {
       const { primeLocation, address, pinCode, pricePerHour, total, occupied } = this.editLotData;
       
       if (!primeLocation.trim() || !address.trim() || !pinCode.trim() || !pricePerHour || !total || occupied === '') {
-        alert('Please fill all fields');
+        console.log('Please fill all fields');
         return false;
       }
       
       if (isNaN(pinCode) || parseInt(pricePerHour) <= 0 || parseInt(total) <= 0 || parseInt(occupied) < 0) {
-        alert('Please enter valid numbers for all numeric fields');
+        console.log('Please enter valid numbers for all numeric fields');
         return false;
       }
       
       if (parseInt(occupied) > parseInt(total)) {
-        alert('Occupied spots cannot exceed maximum spots');
+        console.log('Occupied spots cannot exceed maximum spots');
         return false;
       }
       
@@ -389,7 +389,6 @@ export default {
       this.selectedSlot = null;
     },
     openDetailModal() {
-      this.slotModalVisible = false;
       this.detailModalVisible = true;
     },
     closeDetailModal() {
@@ -397,21 +396,21 @@ export default {
       this.selectedLot = {};
       this.selectedSlot = null;
     },
-    deleteSlot() {
-      if (this.selectedLot.occupiedSpots.includes(this.selectedSlot)) {
-        alert('Cannot delete an occupied slot!');
+    deleteSlot(lot, slot) {
+      if (lot.occupiedSpots.includes(slot)) {
+        console.log('Cannot delete an occupied slot!');
         return;
       }
-      const index = this.parkingLots.findIndex(l => l.id === this.selectedLot.id);
+
+      const index = this.parkingLots.findIndex(l => l.id === lot.id);
       if (index !== -1) {
-        const lot = this.parkingLots[index];
-        lot.occupiedSpots = lot.occupiedSpots.filter(s => s !== this.selectedSlot);
-        lot.occupied = lot.occupiedSpots.length;
-        this.parkingLots.splice(index, 1, lot);
+        const updatedLot = { ...lot };
+        updatedLot.total -= 1; // Decrease total count
+        updatedLot.occupiedSpots = updatedLot.occupiedSpots.filter(s => s !== slot && s <= updatedLot.total); // Adjust occupied spots
+        updatedLot.occupied = updatedLot.occupiedSpots.length; // Update occupied count
+        this.parkingLots.splice(index, 1, updatedLot);
         this.saveParkingLots();
-        this.closeSlotModal();
-        console.log(`Deleted slot ${this.selectedSlot} from ${lot.primeLocation}`);
-        alert('Slot deleted successfully!');
+        console.log(`Deleted slot ${slot} from ${lot.primeLocation}`);
       }
     },
   },
