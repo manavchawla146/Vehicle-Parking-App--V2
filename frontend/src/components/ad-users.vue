@@ -22,13 +22,25 @@
               <td>{{ user.email }}</td>
               <td>{{ user.status }}</td>
               <td>
-                <button class="action-btn ban-btn" @click="banUser(user)">
+                <button class="action-btn ban-btn" @click="showBanModal(user)">
                   {{ user.status === 'Active' ? 'Ban' : 'Unban' }}
                 </button>
               </td>
             </tr>
           </tbody>
         </table>
+       </div>
+
+      <!-- Ban/Unban Confirmation Modal -->
+      <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+        <div class="modal-content">
+          <h3>{{ modalAction }} Confirmation</h3>
+          <p>Are you sure you want to {{ modalAction.toLowerCase() }} {{ selectedUser.name }}?</p>
+          <div class="button-group">
+            <button class="action-btn confirm-btn" @click="confirmAction">{{ modalAction }}</button>
+            <button class="action-btn cancel-btn" @click="closeModal">Cancel</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -44,33 +56,63 @@ export default {
   },
   data() {
     return {
-      users: JSON.parse(localStorage.getItem('users')) || [
-        { id: 1, name: 'John Doe', email: 'john.doe@example.com', status: 'Active' },
-        { id: 2, name: 'Jane Smith', email: 'jane.smith@example.com', status: 'Active' },
-        { id: 3, name: 'Bob Johnson', email: 'bob.johnson@example.com', status: 'Banned' },
-      ],
+      users: [],
+      showModal: false,
+      selectedUser: {},
+      modalAction: '',
     };
   },
   methods: {
-    banUser(user) {
-      if (user.status === 'Active' && confirm(`Are you sure you want to ban ${user.name}?`)) {
-        user.status = 'Banned';
-        this.saveUsers();
-        console.log('Banned user:', user.name);
-      } else if (user.status === 'Banned' && confirm(`Are you sure you want to unban ${user.name}?`)) {
-        user.status = 'Active';
-        this.saveUsers();
-        console.log('Unbanned user:', user.name);
+    async fetchUsers() {
+      try {
+        const response = await fetch('/api/admin/users', {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await response.json();
+        if (response.ok) {
+          this.users = data;
+        } else {
+          console.error('Failed to fetch users:', data.error);
+        }
+      } catch (err) {
+        console.error('Error fetching users:', err);
       }
     },
-    saveUsers() {
-      localStorage.setItem('users', JSON.stringify(this.users));
+    showBanModal(user) {
+      this.selectedUser = { ...user };
+      this.modalAction = user.status === 'Active' ? 'Ban' : 'Unban';
+      this.showModal = true;
+    },
+    closeModal() {
+      this.showModal = false;
+      this.selectedUser = {};
+      this.modalAction = '';
+    },
+    async confirmAction() {
+      try {
+        const endpoint = this.modalAction === 'Ban' ? '/ban' : '/unban';
+        const response = await fetch(`/api/admin/users/${this.selectedUser.id}${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await response.json();
+        if (response.ok) {
+          const index = this.users.findIndex(u => u.id === this.selectedUser.id);
+          if (index !== -1) {
+            this.users[index].status = data.status;
+          }
+          this.closeModal();
+          console.log(`${this.modalAction} successful for ${this.selectedUser.name}`);
+        } else {
+          console.error('Failed to update user status:', data.error);
+        }
+      } catch (err) {
+        console.error('Error updating user status:', err);
+      }
     },
   },
   created() {
-    window.addEventListener('beforeunload', () => {
-      localStorage.removeItem('users');
-    });
+    this.fetchUsers();
   },
 };
 </script>
@@ -78,7 +120,6 @@ export default {
 <style>
 @import url('../assets/ad-dash.css');
 
-/* Additional styles for users table */
 .users-table-wrapper {
   overflow-x: auto;
   margin-top: 20px;
@@ -134,6 +175,76 @@ export default {
 .ban-btn:hover {
   background: linear-gradient(90deg, #c0392b, #e74c3c);
   transform: translateY(-1px);
+}
+
+.confirm-btn {
+  background: linear-gradient(90deg, #2ecc71, #27ae60);
+  color: white;
+}
+
+.confirm-btn:hover {
+  background: linear-gradient(90deg, #27ae60, #2ecc71);
+  transform: translateY(-1px);
+}
+
+.cancel-btn {
+  background: linear-gradient(90deg, #e74c3c, #c0392b);
+  color: white;
+}
+
+.cancel-btn:hover {
+  background: linear-gradient(90deg, #c0392b, #e74c3c);
+  transform: translateY(-1px);
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.refresh-btn {
+  background: linear-gradient(90deg, #3498db, #2980b9);
+  color: white;
+  margin-top: 10px;
+}
+
+.refresh-btn:hover {
+  background: linear-gradient(90deg, #2980b9, #3498db);
+  transform: translateY(-1px);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  color: #333;
+  width: 300px;
+}
+
+.modal-content h3 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.modal-content p {
+  margin-bottom: 20px;
+  color: #666;
 }
 
 @media (max-width: 600px) {

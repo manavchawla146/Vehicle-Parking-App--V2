@@ -31,7 +31,6 @@ def signup():
     db.session.add(user)
     db.session.commit()
 
-    # Set session for the new user
     session['user_id'] = user.id
     session['role'] = user.role
 
@@ -42,17 +41,18 @@ def login():
     data = request.json
     email = data.get('email')
     password = data.get('password')
-    # Admin login
     if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
         session['user_id'] = 'admin'
         session['role'] = 'admin'
         return jsonify({'role': 'admin', 'message': 'Admin login successful'}), 200
-    # User login
     user = User.query.filter_by(email=email).first()
-    if user and check_password_hash(user.password_hash, password):
-        session['user_id'] = user.id
-        session['role'] = user.role
-        return jsonify({'role': user.role, 'message': 'User login successful', 'username': user.username}), 200
+    if user:
+        if user.banned:
+            return jsonify({'error': 'banned'}), 403
+        if check_password_hash(user.password_hash, password):
+            session['user_id'] = user.id
+            session['role'] = user.role
+            return jsonify({'role': user.role, 'message': 'User login successful', 'username': user.username}), 200
     return jsonify({'error': 'Invalid email or password'}), 401
 
 @auth_bp.route('/logout', methods=['POST'])

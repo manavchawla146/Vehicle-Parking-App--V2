@@ -1,6 +1,6 @@
 <template>
   <div class="page-container">
-   
+    <us-nav />
     <div class="container">
       <div class="form-box">
         <h2><i class="fas fa-parking"></i> User Login</h2>
@@ -34,18 +34,23 @@
           <router-link to="/signup" class="redirect-link">Sign Up</router-link>
         </p>
       </div>
+      <div v-if="showBannedModal" class="modal-overlay">
+        <div class="modal-content">
+          <h3>You are banned</h3>
+          <p>Your account has been banned. Please contact the administrator.</p>
+          <button @click="showBannedModal = false">Close</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import usNav from './us-nav.vue';
+
 
 export default {
   name: 'LoginPage',
-  components: {
-    'us-nav': usNav,
-  },
+
   data() {
     return {
       email: '',
@@ -54,6 +59,7 @@ export default {
         email: '',
         password: '',
       },
+      showBannedModal: false,
     };
   },
   methods: {
@@ -92,12 +98,15 @@ export default {
           if (response.ok) {
             if (data.role === 'admin') {
               this.$router.push('/ad-dash');
-            } else {
-            this.$router.push('/us-dash');
-              }
+            } else if (data.role === 'user') {
+              this.$router.push('/us-dash');
+            }
           } else {
             this.errors.email = data.error || 'Login failed';
             this.errors.password = data.error || 'Login failed';
+            if (data.error === 'banned') {
+              this.showBannedModal = true;
+            }
           }
         } catch (err) {
           this.errors.email = 'Server error';
@@ -123,7 +132,7 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100vh - 60px); /* Adjust for navbar height */
+  min-height: calc(100vh - 60px);
   padding-top: 60px;
 }
 
@@ -159,7 +168,7 @@ export default {
   font-size: 15px;
   font-family: 'Roboto', sans-serif;
   font-weight: 500;
-  margin-bottom: 80px;
+  margin-bottom: 5px; /* Adjusted from 80px to 5px */
   color: #e0f7fa;
 }
 
@@ -238,5 +247,53 @@ export default {
 .submit-btn {
   width: 100%;
   box-sizing: border-box;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  color: #333;
+}
+
+.modal-content h3 {
+  color: #ff4444;
+  margin-bottom: 10px;
+}
+
+.modal-content p {
+  margin-bottom: 20px;
+  color: #555;
+}
+
+.modal-content button {
+  padding: 10px 20px;
+  background-color: #26a69a;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.modal-content button:hover {
+  background-color: #4dd0e1;
 }
 </style>

@@ -18,4 +18,6 @@ def create_app():
     app.register_blueprint(auth_bp)
     from .user import user_bp
     app.register_blueprint(user_bp)
+    from .admin import admin_bp
+    app.register_blueprint(admin_bp)
     return app
