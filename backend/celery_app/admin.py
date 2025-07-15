@@ -13,7 +13,7 @@ def add_lot():
     lot = ParkingLot(
         prime_location_name=data['primeLocation'],
         price=data['pricePerHour'],
-        address=data['address'],    
+        address=data['address'],
         pin_code=data['pinCode'],
         number_of_spots=data['maxSpots'],
         created_at=datetime.utcnow()
@@ -34,12 +34,14 @@ def get_lots():
             'pricePerHour': lot.price,
             'total': lot.number_of_spots,
             'createdAt': lot.created_at.isoformat(),
-            'occupiedSpots': [spot.id for spot in getattr(lot, 'spots', []) if getattr(spot, 'status', 'A') == 'O'],
+            'occupiedSpots': [spot.slot_number for spot in lot.spots if spot.status == 'O'],
             'slotDetails': {
-                spot.id: {
+                str(spot.slot_number): {
                     'status': spot.status,
+                    'vehicleId': spot.vehicle_id or 'N/A',
+                    'occupationTime': spot.occupation_time.isoformat() if spot.occupation_time else 'N/A'
                 }
-                for spot in getattr(lot, 'spots', [])
+                for spot in lot.spots
             }
         }
         for lot in lots
@@ -51,6 +53,8 @@ def delete_lot(lot_id):
         return jsonify({'error': 'Unauthorized'}), 403
 
     lot = ParkingLot.query.get_or_404(lot_id)
+    if any(spot.status == 'O' for spot in lot.spots):
+        return jsonify({'error': 'Cannot delete lot with occupied slots'}), 400
     db.session.delete(lot)
     db.session.commit()
     return jsonify({'message': 'Lot deleted successfully'}), 200
@@ -61,11 +65,11 @@ def add_slot(lot_id):
         return jsonify({'error': 'Unauthorized'}), 403
 
     lot = ParkingLot.query.get_or_404(lot_id)
-    if len(lot.slots) >= lot.number_of_spots:
+    if len(lot.spots) >= lot.number_of_spots:
         return jsonify({'error': 'Maximum slots reached'}), 400
 
-    new_slot_number = len(lot.slots) + 1
-    slot = ParkingSpot(lot_id=lot_id, slot_number=new_slot_number, status='A')  # Using ParkingSpot
+    new_slot_number = len(lot.spots) + 1
+    slot = ParkingSpot(lot_id=lot_id, slot_number=new_slot_number, status='A')
     db.session.add(slot)
     db.session.commit()
     return jsonify({'message': 'Slot added successfully', 'slotNumber': new_slot_number}), 201
@@ -76,10 +80,10 @@ def delete_slot(lot_id, slot_number):
         return jsonify({'error': 'Unauthorized'}), 403
 
     lot = ParkingLot.query.get_or_404(lot_id)
-    slot = next((s for s in lot.spots if s.slot_number == slot_number), None)  # Using spots
+    slot = next((s for s in lot.spots if s.slot_number == slot_number), None)
     if not slot:
         return jsonify({'error': 'Slot not found'}), 404
-    if slot.status == 'O':  # Check occupied status
+    if slot.status == 'O':
         return jsonify({'error': 'Cannot delete occupied slot'}), 400
 
     db.session.delete(slot)
@@ -128,8 +132,15 @@ def update_lot(lot_id):
         'pricePerHour': lot.price,
         'total': lot.number_of_spots,
         'createdAt': lot.created_at.isoformat(),
-        'occupiedSpots': [],
-        'slotDetails': {}
+        'occupiedSpots': [spot.slot_number for spot in lot.spots if spot.status == 'O'],
+        'slotDetails': {
+            str(spot.slot_number): {
+                'status': spot.status,
+                'vehicleId': spot.vehicle_id or 'N/A',
+                'occupationTime': spot.occupation_time.isoformat() if spot.occupation_time else 'N/A'
+            }
+            for spot in lot.spots
+        }
     }), 200
 
 @admin_bp.route('/users', methods=['GET'])
@@ -137,7 +148,7 @@ def get_users():
     if session.get('role') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
     users = User.query.all()
-    print(f"Users fetched: {[user.username for user in users]}")  # Debug log
+    print(f"Users fetched: {[user.username for user in users]}")
     return jsonify([
         {
             'id': user.id,

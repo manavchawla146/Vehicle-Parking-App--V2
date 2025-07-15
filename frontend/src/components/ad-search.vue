@@ -47,8 +47,12 @@
 
       <!-- Parking Lots Section -->
       <div v-if="(filteredParkingLots.length || searchBy === 'primeLocation' || searchBy === 'pricePerHour') && (searchBy === 'primeLocation' || searchBy === 'pricePerHour')" class="parking-lots">
-        <div v-for="lot in filteredParkingLots" :key="lot.id" class="parking-card">
-          <h4>{{ lot.primeLocation }} (Occupied: {{ lot.occupied }}/{{ lot.total }}) <button class="action-btn" @click="openEditModal(lot)">Edit</button> <button class="action-btn delete-btn" @click="deleteLot(lot)">Delete</button></h4>
+        <div v-for="lot in filteredParkingLots" :key="lot.id" class="lot-card">
+          <h4>{{ lot.primeLocation }} <span>(Occupied: {{ lot.occupiedSpots.length }}/{{ lot.total }})</span></h4>
+          <div class="button-group">
+            <button class="action-btn edit-btn" @click="openEditModal(lot)">Edit</button>
+            <button class="action-btn delete-btn" @click="deleteLot(lot.id)">Delete</button>
+          </div>
           <div class="parking-grid">
             <span v-for="n in lot.total" :key="n" :class="['parking-spot', { occupied: lot.occupiedSpots.includes(n) }]" @click="openSlotModal(lot, n)">
               {{ lot.occupiedSpots.includes(n) ? 'O' : 'A' }}
@@ -65,33 +69,29 @@
           </div>
           <div class="modal-body">
             <div class="form-group">
-              <label>Prime Location Name :</label>
-              <input v-model="editLotData.primeLocation" type="text" class="modal-input" />
+              <label>Prime Location Name:</label>
+              <input v-model="editLotData.primeLocation" type="text" class="profile-input" />
             </div>
             <div class="form-group">
-              <label>Address :</label>
-              <textarea v-model="editLotData.address" class="modal-textarea"></textarea>
+              <label>Address:</label>
+              <input v-model="editLotData.address" type="text" class="profile-input" />
             </div>
             <div class="form-group">
-              <label>Pin code :</label>
-              <input v-model="editLotData.pinCode" type="text" class="modal-input" />
+              <label>Pin Code:</label>
+              <input v-model="editLotData.pinCode" type="text" class="profile-input" />
             </div>
             <div class="form-group">
-              <label>Price(per hour):</label>
-              <input v-model.number="editLotData.pricePerHour" type="number" class="modal-input" />
+              <label>Price (per hour):</label>
+              <input v-model.number="editLotData.pricePerHour" type="number" class="profile-input" />
             </div>
             <div class="form-group">
-              <label>Maximum spots :</label>
-              <input v-model.number="editLotData.total" type="number" class="modal-input" @input="updateEditOccupiedSpots" />
-            </div>
-            <div class="form-group">
-              <label>Occupied spots :</label>
-              <input v-model.number="editLotData.occupied" type="number" class="modal-input" :max="editLotData.total" @input="updateEditOccupiedSpots" />
+              <label>Maximum Spots:</label>
+              <input v-model.number="editLotData.total" type="number" class="profile-input" @input="updateEditOccupiedSpots" />
             </div>
           </div>
-          <div class="modal-footer">
-            <button class="action-btn modal-update-btn" @click="updateLot">Update</button>
-            <button class="action-btn modal-cancel-btn" @click="closeEditModal">Cancel</button>
+          <div class="button-group">
+            <button class="action-btn save-btn" @click="updateLot">Save</button>
+            <button class="action-btn cancel-btn" @click="closeEditModal">Cancel</button>
           </div>
         </div>
       </div>
@@ -107,9 +107,9 @@
             <p>Slot Number: {{ selectedSlot }}</p>
             <p>Status: {{ selectedLot.occupiedSpots.includes(selectedSlot) ? 'Occupied' : 'Available' }}</p>
           </div>
-          <div class="modal-footer">
+          <div class="button-group">
             <button v-if="selectedLot.occupiedSpots.includes(selectedSlot)" class="action-btn modal-detail-btn" @click="openDetailModal">Detail</button>
-            <button v-else class="action-btn modal-delete-btn" @click="deleteSlot">Delete</button>
+            <button v-else class="action-btn modal-delete-btn" @click="deleteSlot(selectedLot.id, selectedSlot)">Delete</button>
             <button class="action-btn modal-cancel-btn" @click="closeSlotModal">Close</button>
           </div>
         </div>
@@ -124,32 +124,28 @@
           <div class="modal-body">
             <div class="form-group">
               <label>Prime Location:</label>
-              <input v-model="selectedLot.primeLocation" type="text" class="modal-input" readonly />
+              <input v-model="selectedLot.primeLocation" type="text" class="profile-input" readonly />
             </div>
             <div class="form-group">
               <label>Address:</label>
-              <textarea v-model="selectedLot.address" class="modal-textarea" readonly></textarea>
+              <input v-model="selectedLot.address" type="text" class="profile-input" readonly />
             </div>
             <div class="form-group">
               <label>Pin Code:</label>
-              <input v-model="selectedLot.pinCode" type="text" class="modal-input" readonly />
+              <input v-model="selectedLot.pinCode" type="text" class="profile-input" readonly />
             </div>
             <div class="form-group">
               <label>Price (per hour):</label>
-              <input v-model.number="selectedLot.pricePerHour" type="number" class="modal-input" readonly />
+              <input v-model.number="selectedLot.pricePerHour" type="number" class="profile-input" readonly />
             </div>
             <div class="form-group">
               <label>Maximum Spots:</label>
-              <input v-model.number="selectedLot.total" type="number" class="modal-input" readonly />
-            </div>
-            <div class="form-group">
-              <label>Occupied Spots:</label>
-              <input v-model.number="selectedLot.occupied" type="number" class="modal-input" readonly />
+              <input v-model.number="selectedLot.total" type="number" class="profile-input" readonly />
             </div>
             <p>Slot Number: {{ selectedSlot }}</p>
             <p>Status: {{ selectedLot.occupiedSpots.includes(selectedSlot) ? 'Occupied' : 'Available' }}</p>
           </div>
-          <div class="modal-footer">
+          <div class="button-group">
             <button class="action-btn modal-cancel-btn" @click="closeDetailModal">Close</button>
           </div>
         </div>
@@ -182,21 +178,12 @@ export default {
         pinCode: '',
         pricePerHour: '',
         total: '',
-        occupied: '',
         occupiedSpots: [],
-        location: ''
       },
       selectedLot: {},
       selectedSlot: null,
-      users: JSON.parse(localStorage.getItem('users')) || [
-        { id: 1, name: 'John Doe', email: 'john.doe@example.com', status: 'Active' },
-        { id: 2, name: 'Jane Smith', email: 'jane.smith@example.com', status: 'Active' },
-        { id: 3, name: 'Bob Johnson', email: 'bob.johnson@example.com', status: 'Banned' },
-      ],
-      parkingLots: JSON.parse(localStorage.getItem('parkingLots')) || [
-        { id: 1, primeLocation: 'Velachery Lot', address: '123 Velachery St', pinCode: '600042', pricePerHour: 20, total: 15, occupied: 3, occupiedSpots: [2, 5, 10], location: 'Velachery' },
-        { id: 2, primeLocation: 'Anna Nagar Lot', address: '456 Anna Nagar Rd', pinCode: '600040', pricePerHour: 25, total: 10, occupied: 4, occupiedSpots: [1, 3, 6, 8], location: 'Anna Nagar' },
-      ],
+      users: [],
+      parkingLots: [],
     };
   },
   computed: {
@@ -226,6 +213,34 @@ export default {
     },
   },
   methods: {
+    async fetchUsers() {
+      try {
+        const response = await fetch('/api/admin/users', {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await response.json();
+        if (response.ok) {
+          this.users = data;
+        } else {
+          console.error('Failed to fetch users:', data.error);
+        }
+      } catch (err) {
+        console.error('Error fetching users:', err);
+      }
+    },
+    async fetchLots() {
+      try {
+        const response = await fetch('/api/admin/lots');
+        const data = await response.json();
+        if (response.ok) {
+          this.parkingLots = data;
+        } else {
+          console.error('Failed to fetch lots:', data.error);
+        }
+      } catch (err) {
+        console.error('Error fetching lots:', err);
+      }
+    },
     searchItems() {
       console.log('Searching for:', this.searchBy, this.searchString);
     },
@@ -242,9 +257,7 @@ export default {
         pinCode: lot.pinCode,
         pricePerHour: lot.pricePerHour,
         total: lot.total,
-        occupied: lot.occupied,
         occupiedSpots: [...lot.occupiedSpots],
-        location: lot.primeLocation
       };
       this.editModalVisible = true;
     },
@@ -261,90 +274,113 @@ export default {
         pinCode: '',
         pricePerHour: '',
         total: '',
-        occupied: '',
         occupiedSpots: [],
-        location: ''
       };
     },
     updateEditOccupiedSpots() {
-      const occupied = parseInt(this.editLotData.occupied) || 0;
+      const occupied = this.editLotData.occupiedSpots.length;
       const total = parseInt(this.editLotData.total) || 0;
-      
       if (occupied > total) {
-        this.editLotData.occupied = total;
+        this.editLotData.occupiedSpots = this.editLotData.occupiedSpots.slice(0, total);
       }
-      
-      this.editLotData.occupiedSpots = Array.from(
-        { length: parseInt(this.editLotData.occupied) || 0 }, 
-        (_, i) => i + 1
-      );
     },
-    updateLot() {
-      console.log('Update button clicked');
-      
-      if (!this.validateEditForm()) {
-        console.log('Validation failed');
-        return;
-      }
-      
-      const index = this.parkingLots.findIndex(l => l.id === this.editLotData.id);
-      console.log('Found lot at index:', index);
-      
-      if (index !== -1) {
-        const updatedLot = {
-          id: this.editLotData.id,
-          primeLocation: this.editLotData.primeLocation,
-          address: this.editLotData.address,
-          pinCode: this.editLotData.pinCode,
-          pricePerHour: parseInt(this.editLotData.pricePerHour),
-          total: parseInt(this.editLotData.total),
-          occupied: parseInt(this.editLotData.occupied),
-          occupiedSpots: [...this.editLotData.occupiedSpots],
-          location: this.editLotData.primeLocation
-        };
-        
-        console.log('Updating with:', updatedLot);
-        
-        this.parkingLots.splice(index, 1, updatedLot);
-        this.saveParkingLots();
-        this.closeEditModal();
-        
-        console.log('Updated lot:', updatedLot.primeLocation);
-        alert('Parking lot updated successfully!');
-      } else {
-        console.log('Lot not found');
-        alert('Error: Parking lot not found');
+    async updateLot() {
+      if (!this.validateEditForm()) return;
+
+      try {
+        const response = await fetch(`/api/admin/lots/${this.editLotData.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            primeLocation: this.editLotData.primeLocation.trim(),
+            address: this.editLotData.address.trim(),
+            pinCode: this.editLotData.pinCode.trim(),
+            pricePerHour: parseInt(this.editLotData.pricePerHour),
+            maxSpots: parseInt(this.editLotData.total),
+          }),
+        });
+        const data = await response.json();
+        if (response.ok) {
+          const index = this.parkingLots.findIndex(l => l.id === this.editLotData.id);
+          if (index !== -1) {
+            this.parkingLots.splice(index, 1, data);
+          }
+          this.closeEditModal();
+          await this.fetchLots();
+          console.log('Lot updated:', data);
+          alert('Parking lot updated successfully!');
+        } else {
+          alert(data.error || 'Failed to update lot');
+        }
+      } catch (err) {
+        alert('Server error: ' + err.message);
       }
     },
     validateEditForm() {
-      const { primeLocation, address, pinCode, pricePerHour, total, occupied } = this.editLotData;
-      
-      if (!primeLocation.trim() || !address.trim() || !pinCode.trim() || !pricePerHour || !total || occupied === '') {
-        alert('Please fill all fields');
+      const { primeLocation, address, pinCode, pricePerHour, total } = this.editLotData;
+      if (!primeLocation.trim() || !address.trim() || !pinCode.trim() || !pricePerHour || !total) {
+        alert('Please fill all fields with valid data');
         return false;
       }
-      
-      if (isNaN(pinCode) || parseInt(pricePerHour) <= 0 || parseInt(total) <= 0 || parseInt(occupied) < 0) {
-        alert('Please enter valid numbers for all numeric fields');
+      if (isNaN(parseInt(pinCode)) || parseInt(pinCode) <= 0 || parseInt(pricePerHour) <= 0 || parseInt(total) <= 0) {
+        alert('Pin Code, Price, and Maximum Spots must be positive numbers');
         return false;
       }
-      
-      if (parseInt(occupied) > parseInt(total)) {
-        alert('Occupied spots cannot exceed maximum spots');
-        return false;
-      }
-      
       return true;
     },
-    deleteLot(lot) {
-      if (confirm(`Are you sure you want to delete ${lot.primeLocation}?`)) {
-        this.parkingLots = this.parkingLots.filter(l => l.id !== lot.id);
-        this.saveParkingLots();
-        console.log('Deleted lot:', lot.primeLocation);
+    async deleteLot(lotId) {
+      try {
+        const response = await fetch(`/api/admin/lots/${lotId}`, { method: 'DELETE' });
+        const data = await response.json();
+        if (response.ok) {
+          this.parkingLots = this.parkingLots.filter(l => l.id !== lotId);
+          console.log('Deleted lot:', lotId);
+          alert('Parking lot deleted successfully!');
+        } else {
+          alert(data.error || 'Failed to delete lot');
+        }
+      } catch (err) {
+        alert('Server error: ' + err.message);
       }
     },
-    saveParkingLots() {
-      localStorage.setItem('parkingLots', JSON.stringify(this.parkingLots));
+    async addSlot(lotId) {
+      try {
+        const response = await fetch(`/api/admin/lots/${lotId}/slots`, { method: 'POST' });
+        const data = await response.json();
+        if (response.ok) {
+          const lot = this.parkingLots.find(l => l.id === lotId);
+          lot.total += 1;
+          await this.fetchLots();
+          console.log('Slot added:', data);
+          alert('Slot added successfully!');
+        } else {
+          alert(data.error || 'Failed to add slot');
+        }
+      } catch (err) {
+        alert('Server error: ' + err.message);
+      }
+    },
+    async deleteSlot(lotId, slotNumber) {
+      const lot = this.parkingLots.find(l => l.id === lotId);
+      if (lot.occupiedSpots.includes(slotNumber)) {
+        alert('Cannot delete an occupied slot!');
+        return;
+      }
+      try {
+        const response = await fetch(`/api/admin/lots/${lotId}/slots/${slotNumber}`, { method: 'DELETE' });
+        const data = await response.json();
+        if (response.ok) {
+          lot.total -= 1;
+          lot.occupiedSpots = lot.occupiedSpots.filter(s => s !== slotNumber && s <= lot.total);
+          await this.fetchLots();
+          console.log(`Deleted slot ${slotNumber} from ${lot.primeLocation}`);
+          alert('Slot deleted successfully!');
+        } else {
+          alert(data.error || 'Failed to delete slot');
+        }
+      } catch (err) {
+        alert('Server error: ' + err.message);
+      }
     },
     openSlotModal(lot, slot) {
       this.selectedLot = { ...lot };
@@ -365,33 +401,85 @@ export default {
       this.selectedLot = {};
       this.selectedSlot = null;
     },
-    deleteSlot() {
-      if (this.selectedLot.occupiedSpots.includes(this.selectedSlot)) {
-        alert('Cannot delete an occupied slot!');
-        return;
-      }
-      const index = this.parkingLots.findIndex(l => l.id === this.selectedLot.id);
-      if (index !== -1) {
-        const lot = this.parkingLots[index];
-        lot.occupiedSpots = lot.occupiedSpots.filter(s => s !== this.selectedSlot);
-        lot.occupied = lot.occupiedSpots.length;
-        this.parkingLots.splice(index, 1, lot);
-        this.saveParkingLots();
-        this.closeSlotModal();
-        console.log(`Deleted slot ${this.selectedSlot} from ${lot.primeLocation}`);
-        alert('Slot deleted successfully!');
-      }
-    },
   },
   created() {
-    window.addEventListener('beforeunload', () => {
-      localStorage.removeItem('users');
-      localStorage.removeItem('parkingLots');
-    });
+    this.fetchUsers();
+    this.fetchLots();
   },
 };
 </script>
 
 <style scoped>
 @import url('../assets/ad-dash.css');
+
+.search-section {
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.search-container {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.filter-dropdown {
+  padding: 8px;
+  border: 1px solid #bfc9d1;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  background: #f7fafc;
+  cursor: pointer;
+}
+
+.search-input {
+  padding: 8px 12px;
+  border: 1px solid #bfc9d1;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  background: #f7fafc;
+  flex: 1;
+}
+
+.search-input:focus {
+  border-color: #3498db;
+  outline: none;
+}
+
+.users-table-wrapper {
+  overflow-x: auto;
+  margin-top: 20px;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+}
+
+.users-table th,
+.users-table td {
+  padding: 10px;
+  text-align: left;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  border-bottom: 1px solid #ddd;
+}
+
+.users-table th {
+  background-color: #ecf0f1;
+  color: #333;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.users-table td {
+  background-color: #fff;
+}
+
+.users-table tr:nth-child(even) td {
+  background-color: #f9fbfd;
+}
 </style>
