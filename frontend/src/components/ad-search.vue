@@ -60,7 +60,7 @@
               v-for="slot in lot.slots"
               :key="slot.slot_number"
               :class="['parking-spot', { occupied: slot.status === 'O' }]"
-              @click="openSlotModal(lot, slot.slot_number)"
+              @click="openSlotModal(lot, slot)"
               style="cursor:pointer"
             >
               {{ slot.status }}
@@ -113,12 +113,13 @@
           </div>
           <div class="modal-body">
             <p>Parking Lot: {{ selectedLot.primeLocation }}</p>
-            <p>Slot Number: {{ selectedSlot }}</p>
-            <p>Status: {{ selectedLot.occupiedSpots.includes(selectedSlot) ? 'Occupied' : 'Available' }}</p>
+            <p>Slot Number: {{ selectedSlot.slot_number }}</p>
+            <p>Status: {{ selectedSlot.status === 'O' ? 'Occupied' : 'Available' }}</p>
+            <p v-if="selectedSlot.status === 'O'">Vehicle: {{ selectedSlot.vehicle_id || 'N/A' }}</p>
+            <p v-if="selectedSlot.status === 'O'">User: {{ selectedSlot.username || 'N/A' }}</p>
           </div>
           <div class="button-group">
-            <button v-if="selectedLot.occupiedSpots.includes(selectedSlot)" class="action-btn modal-detail-btn" @click="openDetailModal">Detail</button>
-            <button v-else class="action-btn modal-delete-btn" @click="deleteSlot(selectedLot.id, selectedSlot)">Delete</button>
+            <button v-if="selectedSlot.status === 'A'" class="action-btn modal-delete-btn" @click="deleteSlot(selectedLot.id, selectedSlot.slot_number)">Delete</button>
             <button class="action-btn modal-cancel-btn" @click="closeSlotModal">Close</button>
           </div>
         </div>
@@ -151,11 +152,26 @@
               <label>Maximum Spots:</label>
               <input v-model.number="selectedLot.total" type="number" class="profile-input" readonly />
             </div>
-            <p>Slot Number: {{ selectedSlot }}</p>
-            <p>Status: {{ selectedLot.occupiedSpots.includes(selectedSlot) ? 'Occupied' : 'Available' }}</p>
+            <p>Slot Number: {{ selectedSlot.slot_number }}</p>
+            <p>Status: {{ selectedSlot.status === 'O' ? 'Occupied' : 'Available' }}</p>
           </div>
           <div class="button-group">
             <button class="action-btn modal-cancel-btn" @click="closeDetailModal">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deletion Restriction Modal -->
+      <div v-if="deletionRestrictionModalVisible" class="modal-overlay" @click.self="deletionRestrictionModalVisible = false">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Deletion Restricted</h3>
+          </div>
+          <div class="modal-body">
+            <p>You can't delete parking lot as it has an occupied parking slot.</p>
+          </div>
+          <div class="button-group">
+            <button class="action-btn modal-cancel-btn" style="width: 100%; background: linear-gradient(90deg, #26a69a, #4dd0e1); color: #fff; font-size: 18px; font-weight: 500; border-radius: 8px; padding: 10px 0; margin-top: 10px;" @click="deletionRestrictionModalVisible = false">Close</button>
           </div>
         </div>
       </div>
@@ -191,6 +207,7 @@ export default {
       selectedSlot: null,
       users: [],
       parkingLots: [],
+      deletionRestrictionModalVisible: false,
     };
   },
   computed: {
@@ -262,11 +279,19 @@ export default {
       this.searchItems();
     },
     openEditModal(lot) {
-      this.editLotData = { ...lot };
+      this.editLotData = {
+        id: lot.id,
+        primeLocation: lot.primeLocation,
+        address: lot.address,
+        pinCode: lot.pinCode,
+        pricePerHour: lot.pricePerHour,
+        total: lot.total
+      };
       this.editModalVisible = true;
     },
     closeEditModal() {
       this.editModalVisible = false;
+      this.editLotData = {};
     },
     resetEditData() {
       this.editLotData = {
@@ -333,20 +358,24 @@ export default {
     },
     async deleteLot(lotId) {
       try {
-        const response = await fetch(`/api/admin/lots/${lotId}`, { method: 'DELETE', credentials: 'include' });
+        const response = await fetch(`/api/admin/lots/${lotId}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
         const data = await response.json();
         if (response.ok) {
           this.parkingLots = this.parkingLots.filter(l => l.id !== lotId);
-          console.log('Deleted lot:', lotId);
-          alert('Parking lot deleted successfully!');
+          // Optionally refresh lots
+          await this.fetchLots();
         } else {
-          alert(data.error || 'Failed to delete lot');
           if (response.status === 400 && data.error === 'Cannot delete lot with occupied slots') {
-            this.$emit('show-deletion-restriction'); // Adjust UI logic if needed
+            this.deletionRestrictionModalVisible = true;
+          } else {
+            alert(data.error || 'Failed to delete lot');
           }
         }
       } catch (err) {
-        alert('Server error: ' + err.message);
+        alert('Server error');
       }
     },
     async addSlot(lotId) {
@@ -367,25 +396,20 @@ export default {
       }
     },
     async deleteSlot(lotId, slotNumber) {
-      const lot = this.parkingLots.find(l => l.id === lotId);
-      if (lot.occupiedSpots.includes(slotNumber)) {
-        alert('Cannot delete an occupied slot!');
-        return;
-      }
       try {
-        const response = await fetch(`/api/admin/lots/${lotId}/slots/${slotNumber}`, { method: 'DELETE', credentials: 'include' });
+        const response = await fetch(`/api/admin/lots/${lotId}/slots/${slotNumber}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
         const data = await response.json();
         if (response.ok) {
-          lot.total -= 1;
-          lot.occupiedSpots = lot.occupiedSpots.filter(s => s !== slotNumber && s <= lot.total);
-          await this.fetchLots();
-          console.log(`Deleted slot ${slotNumber} from ${lot.primeLocation}`);
-          alert('Slot deleted successfully!');
+          this.closeSlotModal();
+          await this.fetchLots(); // Refresh lots and slots
         } else {
           alert(data.error || 'Failed to delete slot');
         }
       } catch (err) {
-        alert('Server error: ' + err.message);
+        alert('Server error');
       }
     },
     openSlotModal(lot, slot) {

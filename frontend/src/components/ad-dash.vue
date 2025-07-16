@@ -174,7 +174,7 @@
               <p>You can't delete parking lot as it has an occupied parking slot.</p>
             </div>
             <div class="button-group">
-              <button class="action-btn cancel-btn" @click="closeDeletionRestrictionModal">Close</button>
+              <button class="action-btn modal-cancel-btn" style="width: 100%; background: linear-gradient(90deg, #26a69a, #4dd0e1); color: #fff; font-size: 18px; font-weight: 500; border-radius: 8px; padding: 10px 0; margin-top: 10px;" @click="closeDeletionRestrictionModal">Close</button>
             </div>
           </div>
         </div>
