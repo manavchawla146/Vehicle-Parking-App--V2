@@ -1,12 +1,16 @@
 from flask import Blueprint, request, jsonify, session
 from .models import db, ParkingLot, User, ParkingSpot
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
+
+def get_current_time():
+    """Get current time with proper timezone handling"""
+    return datetime.now(timezone.utc)
 
 @admin_bp.route('/lots', methods=['POST'])
 def add_lot():
@@ -21,7 +25,7 @@ def add_lot():
             address=data['address'],
             pin_code=data['pinCode'],
             number_of_spots=data['maxSpots'],
-            created_at=datetime.utcnow()
+            created_at=get_current_time()
         )
         db.session.add(lot)
         db.session.commit()  # Commit to get the lot.id
@@ -130,7 +134,7 @@ def occupy_slot(lot_id, slot_number):
     data = request.json
     slot.status = 'O'
     slot.vehicle_id = data.get('vehicleId', 'N/A')
-    slot.occupation_time = datetime.utcnow()
+    slot.occupation_time = get_current_time()
     db.session.commit()
     return jsonify({'message': 'Slot occupied successfully', 'vehicleId': slot.vehicle_id, 'occupationTime': slot.occupation_time.isoformat()}), 200
 
@@ -141,6 +145,7 @@ def update_lot(lot_id):
 
     lot = ParkingLot.query.get_or_404(lot_id)
     data = request.json
+    old_count = lot.number_of_spots
     new_count = data.get('maxSpots', lot.number_of_spots)
     # Count currently occupied spots
     occupied_count = ParkingSpot.query.filter_by(lot_id=lot_id, status='O').count()

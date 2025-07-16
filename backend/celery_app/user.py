@@ -1,12 +1,16 @@
 from flask import Blueprint, jsonify, session, request
 from .models import db, User, ParkingLot, ParkingSpot, Reservation
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 user_bp = Blueprint('user', __name__, url_prefix='/api')
+
+def get_current_time():
+    """Get current time with proper timezone handling"""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 @user_bp.route('/profile', methods=['GET'])
 def get_profile():
@@ -104,16 +108,19 @@ def reserve_parking():
         logger.error(f"Invalid or unavailable spot: spot={spot}, lot_id={lot.id}, status={spot.status if spot else 'None'}")
         return jsonify({'error': 'Invalid or unavailable spot'}), 400
 
+    # Use explicit time handling for correct timestamps
+    current_time = get_current_time()
+    
     spot.status = 'O'
     spot.vehicle_id = data.get('vehicleNo')
-    spot.occupation_time = datetime.utcnow()
+    spot.occupation_time = current_time
     spot.username = User.query.get(user_id).username
     reservation = Reservation(
         spot_id=spot.id,
         user_id=user_id,
-        parking_timestamp=datetime.utcnow()
+        parking_timestamp=current_time
     )
     db.session.add(reservation)
     db.session.commit()
-    logger.info(f"Successfully reserved spot {spot.id} in lot {lot.id} for user {user_id}")
+    logger.info(f"Successfully reserved spot {spot.id} in lot {lot.id} for user {user_id} at {current_time}")
     return jsonify({'message': 'Parking reserved successfully', 'reservationId': reservation.id, 'spotId': spot.id})

@@ -1,6 +1,5 @@
-
 from . import db
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import relationship
 
 class User(db.Model):
@@ -29,7 +28,7 @@ class ParkingLot(db.Model):
     address = db.Column(db.String(255), nullable=False)
     pin_code = db.Column(db.String(10), nullable=False)
     number_of_spots = db.Column(db.Integer, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
 
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
     spots = db.relationship(
@@ -70,7 +69,7 @@ class Reservation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
     spot_id = db.Column(db.Integer, db.ForeignKey('parking_spots.id'))  # <-- Add this line
-    parking_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    parking_timestamp = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     leaving_timestamp = db.Column(db.DateTime, nullable=True)
     parking_cost = db.Column(db.Float, nullable=True)
     remarks = db.Column(db.String(255), nullable=True)
@@ -81,7 +80,7 @@ class ExportTask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
     status = db.Column(db.String(20), default='pending')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     completed_at = db.Column(db.DateTime, nullable=True)
     download_link = db.Column(db.String(255), nullable=True)
 
@@ -91,4 +90,23 @@ class ReminderLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
     reminder_type = db.Column(db.String(50))  # daily, monthly
-    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
+    sent_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+
+class ParkingUsageLog(db.Model):
+    __tablename__ = 'parking_usage_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    
+    user_email = db.Column(db.String(120), nullable=False)
+    lot_name = db.Column(db.String(100), nullable=False)
+    spot_id = db.Column(db.Integer, nullable=False)
+    slot_number = db.Column(db.Integer, nullable=True)
+    
+    parking_timestamp = db.Column(db.DateTime, nullable=False)
+    leaving_timestamp = db.Column(db.DateTime, nullable=True)
+    duration_minutes = db.Column(db.Integer, nullable=True)
+    
+    parking_cost = db.Column(db.Float, nullable=True)
+    remarks = db.Column(db.String(255), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
