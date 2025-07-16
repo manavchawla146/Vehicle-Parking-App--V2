@@ -32,7 +32,12 @@ class ParkingLot(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
-    spots = db.relationship('ParkingSpot', backref='lot', lazy=True)
+    spots = db.relationship(
+        'ParkingSpot',
+        backref='lot',
+        lazy=True,
+        cascade="all, delete-orphan"
+    )
 
     def generate_spots(self):
         """Auto-generate parking spots based on number_of_spots."""
@@ -47,7 +52,11 @@ class ParkingSpot(db.Model):
     __tablename__ = 'parking_spots'
 
     id = db.Column(db.Integer, primary_key=True)
-    lot_id = db.Column(db.Integer, db.ForeignKey('parking_lots.id'), nullable=False)
+    lot_id = db.Column(
+        db.Integer,
+        db.ForeignKey('parking_lots.id', ondelete="CASCADE"),
+        nullable=False
+    )
     slot_number = db.Column(db.Integer, nullable=False)
     status = db.Column(db.String(1), nullable=False, default='A')  # 'A' = Available, 'O' = Occupied
     vehicle_id = db.Column(db.String(50), nullable=True)

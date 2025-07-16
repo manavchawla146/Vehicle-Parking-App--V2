@@ -304,7 +304,7 @@ export default {
           this.closeAddModal();
           await this.fetchLots();
           console.log('New lot added:', data);
-          alert('Parking lot added successfully!');
+            ('Parking lot added successfully!');
         } else {
           alert(data.error || 'Failed to add lot');
         }
