@@ -14,8 +14,8 @@ SESSION_TYPE = 'filesystem'  # To store sessions server-side (safer than cookie-
 SESSION_PERMANENT = False
 SESSION_USE_SIGNER = True  # Signs session cookie for added security
 SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript from accessing the cookie
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False  # Set to True in production over HTTPS
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = False  # For localhost
 
 # --------------------------
 # Admin Credentials (Optional)

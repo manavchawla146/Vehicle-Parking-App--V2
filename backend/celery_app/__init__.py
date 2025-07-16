@@ -11,7 +11,7 @@ migrate = Migrate()
 def create_app():
     app = Flask(__name__)
     app.config.from_pyfile('../config.py')
-    CORS(app)
+    CORS(app, supports_credentials=True)
     db.init_app(app)
     migrate.init_app(app, db)
     from .auth import auth_bp

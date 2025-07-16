@@ -1,6 +1,5 @@
 <template>
   <div class="page-container">
-    <us-nav />
     <div class="container">
       <div class="form-box">
         <h2><i class="fas fa-parking"></i> User Login</h2>
@@ -46,8 +45,6 @@
 </template>
 
 <script>
-
-
 export default {
   name: 'LoginPage',
 
@@ -89,17 +86,23 @@ export default {
     async handleLogin() {
       if (this.validateForm()) {
         try {
+          console.log('Attempting login with:', { email: this.email, password: this.password });
           const response = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: this.email, password: this.password })
+            body: JSON.stringify({ email: this.email, password: this.password }),
+            credentials: 'include'
           });
           const data = await response.json();
+          console.log('Login response:', data);
+
           if (response.ok) {
             if (data.role === 'admin') {
-              this.$router.push('/ad-dash');
+              console.log('Navigating to /ad-dash');
+              await this.$router.push('/ad-dash');
             } else if (data.role === 'user') {
-              this.$router.push('/us-dash');
+              console.log('Navigating to /us-dash');
+              await this.$router.push('/us-dash');
             }
           } else {
             this.errors.email = data.error || 'Login failed';
@@ -109,6 +112,7 @@ export default {
             }
           }
         } catch (err) {
+          console.error('Login error:', err);
           this.errors.email = 'Server error';
           this.errors.password = 'Server error';
         }
@@ -168,7 +172,7 @@ export default {
   font-size: 15px;
   font-family: 'Roboto', sans-serif;
   font-weight: 500;
-  margin-bottom: 5px; /* Adjusted from 80px to 5px */
+  margin-bottom: 5px;
   color: #e0f7fa;
 }
 

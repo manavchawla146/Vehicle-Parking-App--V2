@@ -46,20 +46,29 @@
       </div>
 
       <!-- Parking Lots Section -->
-      <div v-if="(filteredParkingLots.length || searchBy === 'primeLocation' || searchBy === 'pricePerHour') && (searchBy === 'primeLocation' || searchBy === 'pricePerHour')" class="parking-lots">
+      <div v-if="filteredParkingLots.length && (searchBy === 'primeLocation' || searchBy === 'pricePerHour')" class="parking-lots">
         <div v-for="lot in filteredParkingLots" :key="lot.id" class="lot-card">
-          <h4>{{ lot.primeLocation }} <span>(Occupied: {{ lot.occupiedSpots.length }}/{{ lot.total }})</span></h4>
+          <h4>
+            {{ lot.primeLocation }} (Occupied: {{ lot.slots.filter(s => s.status === 'O').length }}/{{ lot.slots.length }})
+          </h4>
           <div class="button-group">
             <button class="action-btn edit-btn" @click="openEditModal(lot)">Edit</button>
             <button class="action-btn delete-btn" @click="deleteLot(lot.id)">Delete</button>
           </div>
           <div class="parking-grid">
-            <span v-for="n in lot.total" :key="n" :class="['parking-spot', { occupied: lot.occupiedSpots.includes(n) }]" @click="openSlotModal(lot, n)">
-              {{ lot.occupiedSpots.includes(n) ? 'O' : 'A' }}
+            <span
+              v-for="slot in lot.slots"
+              :key="slot.slot_number"
+              :class="['parking-spot', { occupied: slot.status === 'O' }]"
+              @click="openSlotModal(lot, slot.slot_number)"
+              style="cursor:pointer"
+            >
+              {{ slot.status }}
             </span>
           </div>
         </div>
       </div>
+      <p v-if="!filteredParkingLots.length && (searchBy === 'primeLocation' || searchBy === 'pricePerHour') && searchString">No parking lots found matching your search.</p>
 
       <!-- Modal for Editing Parking Lot -->
       <div v-if="editModalVisible" class="modal-overlay" @click.self="closeEditModal">
@@ -150,8 +159,6 @@
           </div>
         </div>
       </div>
-
-      <p v-if="!filteredUsers.length && !filteredParkingLots.length && searchString">No results found matching your search.</p>
     </div>
   </div>
 </template>
@@ -217,6 +224,7 @@ export default {
       try {
         const response = await fetch('/api/admin/users', {
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
         });
         const data = await response.json();
         if (response.ok) {
@@ -230,10 +238,15 @@ export default {
     },
     async fetchLots() {
       try {
-        const response = await fetch('/api/admin/lots');
+        const response = await fetch('/api/admin/lots', { credentials: 'include' });
         const data = await response.json();
         if (response.ok) {
           this.parkingLots = data;
+          // Fetch slots for each lot
+          await Promise.all(this.parkingLots.map(async lot => {
+            const res = await fetch(`/api/admin/lots/${lot.id}/slots`, { credentials: 'include' });
+            lot.slots = await res.json();
+          }));
         } else {
           console.error('Failed to fetch lots:', data.error);
         }
@@ -249,22 +262,11 @@ export default {
       this.searchItems();
     },
     openEditModal(lot) {
-      console.log('Opening edit modal for:', lot);
-      this.editLotData = {
-        id: lot.id,
-        primeLocation: lot.primeLocation,
-        address: lot.address,
-        pinCode: lot.pinCode,
-        pricePerHour: lot.pricePerHour,
-        total: lot.total,
-        occupiedSpots: [...lot.occupiedSpots],
-      };
+      this.editLotData = { ...lot };
       this.editModalVisible = true;
     },
     closeEditModal() {
-      console.log('Closing edit modal');
       this.editModalVisible = false;
-      this.resetEditData();
     },
     resetEditData() {
       this.editLotData = {
@@ -298,6 +300,7 @@ export default {
             pricePerHour: parseInt(this.editLotData.pricePerHour),
             maxSpots: parseInt(this.editLotData.total),
           }),
+          credentials: 'include'
         });
         const data = await response.json();
         if (response.ok) {
@@ -330,7 +333,7 @@ export default {
     },
     async deleteLot(lotId) {
       try {
-        const response = await fetch(`/api/admin/lots/${lotId}`, { method: 'DELETE' });
+        const response = await fetch(`/api/admin/lots/${lotId}`, { method: 'DELETE', credentials: 'include' });
         const data = await response.json();
         if (response.ok) {
           this.parkingLots = this.parkingLots.filter(l => l.id !== lotId);
@@ -338,6 +341,9 @@ export default {
           alert('Parking lot deleted successfully!');
         } else {
           alert(data.error || 'Failed to delete lot');
+          if (response.status === 400 && data.error === 'Cannot delete lot with occupied slots') {
+            this.$emit('show-deletion-restriction'); // Adjust UI logic if needed
+          }
         }
       } catch (err) {
         alert('Server error: ' + err.message);
@@ -345,7 +351,7 @@ export default {
     },
     async addSlot(lotId) {
       try {
-        const response = await fetch(`/api/admin/lots/${lotId}/slots`, { method: 'POST' });
+        const response = await fetch(`/api/admin/lots/${lotId}/slots`, { method: 'POST', credentials: 'include' });
         const data = await response.json();
         if (response.ok) {
           const lot = this.parkingLots.find(l => l.id === lotId);
@@ -367,7 +373,7 @@ export default {
         return;
       }
       try {
-        const response = await fetch(`/api/admin/lots/${lotId}/slots/${slotNumber}`, { method: 'DELETE' });
+        const response = await fetch(`/api/admin/lots/${lotId}/slots/${slotNumber}`, { method: 'DELETE', credentials: 'include' });
         const data = await response.json();
         if (response.ok) {
           lot.total -= 1;
@@ -383,7 +389,7 @@ export default {
       }
     },
     openSlotModal(lot, slot) {
-      this.selectedLot = { ...lot };
+      this.selectedLot = lot;
       this.selectedSlot = slot;
       this.slotModalVisible = true;
     },
@@ -393,7 +399,6 @@ export default {
       this.selectedSlot = null;
     },
     openDetailModal() {
-      this.slotModalVisible = false;
       this.detailModalVisible = true;
     },
     closeDetailModal() {

@@ -134,6 +134,24 @@
           </div>
         </div>
       </div>
+
+      <!-- Booking Modal -->
+      <div v-if="showModal" class="modal">
+        <div class="modal-content">
+          <h3>Available Slots for {{ selectedLot.address }}</h3>
+          <div>
+            <button
+              v-for="slot in slots"
+              :key="slot.id"
+              :disabled="slot.status !== 'A'"
+              @click="bookSlot(slot)"
+              :style="{ background: slot.status === 'A' ? '#1abc9c' : '#ccc' }"
+            >
+              {{ slot.slot_number }} ({{ slot.status }})
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -163,7 +181,9 @@ export default {
       bookModalData: { spotId: "", lotName: "", username: "", price: "", vehicleNo: "" },
       selectedHistory: null,
       selectedLot: null,
-      userProfile: null
+      userProfile: null,
+      showModal: false,
+      slots: []
     };
   },
   computed: {

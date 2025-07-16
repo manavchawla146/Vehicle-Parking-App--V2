@@ -48,20 +48,22 @@ def add_lot():
 @admin_bp.route('/lots', methods=['GET'])
 def get_lots():
     lots = ParkingLot.query.all()
-    return jsonify([
-        {
+    result = []
+    for lot in lots:
+        occupied = ParkingSpot.query.filter_by(lot_id=lot.id, status='O').count()
+        total = ParkingSpot.query.filter_by(lot_id=lot.id).count()
+        result.append({
             'id': lot.id,
             'primeLocation': lot.prime_location_name,
             'address': lot.address,
             'pinCode': lot.pin_code,
             'pricePerHour': lot.price,
-            'total': lot.number_of_spots,
+            'total': total,
+            'available': total - occupied,
+            'occupied': occupied,
             'createdAt': lot.created_at.isoformat(),
-            'occupiedSpots': [],
-            'slotDetails': {}
-        }
-        for lot in lots
-    ])
+        })
+    return jsonify(result)
 
 @admin_bp.route('/lots/<int:lot_id>', methods=['DELETE'])
 def delete_lot(lot_id):
@@ -81,31 +83,36 @@ def add_slot(lot_id):
         return jsonify({'error': 'Unauthorized'}), 403
 
     lot = ParkingLot.query.get_or_404(lot_id)
-    if len(lot.spots) >= lot.number_of_spots:
-        return jsonify({'error': 'Maximum slots reached'}), 400
-
-    new_slot_number = len(lot.spots) + 1
+    new_slot_number = ParkingSpot.query.filter_by(lot_id=lot_id).count() + 1
     slot = ParkingSpot(lot_id=lot_id, slot_number=new_slot_number, status='A')
     db.session.add(slot)
     db.session.commit()
-    return jsonify({'message': 'Slot added manually successfully', 'slotNumber': new_slot_number}), 201
+
+    # Optionally update number_of_spots in ParkingLot
+    lot.number_of_spots = ParkingSpot.query.filter_by(lot_id=lot_id).count()
+    db.session.commit()
+
+    return jsonify({'message': 'Slot added successfully', 'slotNumber': new_slot_number}), 201
 
 @admin_bp.route('/lots/<int:lot_id>/slots/<int:slot_number>', methods=['DELETE'])
 def delete_slot(lot_id, slot_number):
     if session.get('role') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
 
-    lot = ParkingLot.query.get_or_404(lot_id)
-    slot = next((s for s in lot.spots if s.slot_number == slot_number), None)
+    slot = ParkingSpot.query.filter_by(lot_id=lot_id, slot_number=slot_number).first()
     if not slot:
         return jsonify({'error': 'Slot not found'}), 404
     if slot.status == 'O':
         return jsonify({'error': 'Cannot delete occupied slot'}), 400
 
     db.session.delete(slot)
-    for i, s in enumerate(sorted(lot.spots, key=lambda x: x.slot_number), 1):
-        s.slot_number = i
     db.session.commit()
+
+    # Optionally update number_of_spots in ParkingLot
+    lot = ParkingLot.query.get(lot_id)
+    lot.number_of_spots = ParkingSpot.query.filter_by(lot_id=lot_id).count()
+    db.session.commit()
+
     return jsonify({'message': 'Slot deleted successfully'}), 200
 
 @admin_bp.route('/lots/<int:lot_id>/slots/<int:slot_number>/occupy', methods=['POST'])
@@ -134,30 +141,67 @@ def update_lot(lot_id):
 
     lot = ParkingLot.query.get_or_404(lot_id)
     data = request.json
+    old_count = lot.number_of_spots
+    new_count = data.get('maxSpots', lot.number_of_spots)
     lot.prime_location_name = data.get('primeLocation', lot.prime_location_name)
     lot.address = data.get('address', lot.address)
     lot.pin_code = data.get('pinCode', lot.pin_code)
     lot.price = data.get('pricePerHour', lot.price)
-    lot.number_of_spots = data.get('maxSpots', lot.number_of_spots)
+    lot.number_of_spots = new_count
     db.session.commit()
+
+    # Sync parking_spots table
+    spots = ParkingSpot.query.filter_by(lot_id=lot_id).order_by(ParkingSpot.slot_number).all()
+    current_count = len(spots)
+
+    if new_count > current_count:
+        # Add new spots
+        for i in range(current_count + 1, new_count + 1):
+            spot = ParkingSpot(lot_id=lot_id, slot_number=i, status='A')
+            db.session.add(spot)
+        db.session.commit()
+    elif new_count < current_count:
+        # Remove extra spots (preferably those with status 'A')
+        removable_spots = [s for s in spots if s.status == 'A']
+        to_remove = current_count - new_count
+        if len(removable_spots) < to_remove:
+            return jsonify({'error': 'Cannot remove slots: not enough available spots'}), 400
+        for spot in sorted(removable_spots, key=lambda s: s.slot_number, reverse=True)[:to_remove]:
+            db.session.delete(spot)
+        db.session.commit()
+
+    # Optionally, re-number slot_number for all spots
+    spots = ParkingSpot.query.filter_by(lot_id=lot_id).order_by(ParkingSpot.slot_number).all()
+    for idx, spot in enumerate(spots, 1):
+        spot.slot_number = idx
+    db.session.commit()
+
+    # Return updated lot info
+    occupied = ParkingSpot.query.filter_by(lot_id=lot.id, status='O').count()
+    total = ParkingSpot.query.filter_by(lot_id=lot.id).count()
     return jsonify({
         'id': lot.id,
         'primeLocation': lot.prime_location_name,
         'address': lot.address,
         'pinCode': lot.pin_code,
         'pricePerHour': lot.price,
-        'total': lot.number_of_spots,
+        'total': total,
+        'available': total - occupied,
+        'occupied': occupied,
         'createdAt': lot.created_at.isoformat(),
-        'occupiedSpots': [spot.slot_number for spot in lot.spots if spot.status == 'O'],
-        'slotDetails': {
-            str(spot.slot_number): {
-                'status': spot.status,
-                'vehicleId': spot.vehicle_id or 'N/A',
-                'occupationTime': spot.occupation_time.isoformat() if spot.occupation_time else 'N/A'
-            }
-            for spot in lot.spots
-        }
     }), 200
+
+@admin_bp.route('/lots/<int:lot_id>/slots', methods=['GET'])
+def get_lot_slots(lot_id):
+    slots = ParkingSpot.query.filter_by(lot_id=lot_id).order_by(ParkingSpot.slot_number).all()
+    return jsonify([
+        {
+            'id': slot.id,
+            'slot_number': slot.slot_number,
+            'status': slot.status
+        }
+        for slot in slots
+    ])
 
 @admin_bp.route('/users', methods=['GET'])
 def get_users():

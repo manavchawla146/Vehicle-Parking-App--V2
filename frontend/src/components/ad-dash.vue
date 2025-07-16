@@ -7,17 +7,27 @@
           <h2><i class="fas fa-shield-alt"></i> Admin Dashboard</h2>
           <button class="action-btn add-btn dashboard-add-btn" @click="showModal = true">+ Add Lot</button>
         </div>
-        <h3>Parking Lots</h3>
-        <div class="parking-lots">
+        <h3 v-if="loading">Loading...</h3>
+        <h3 v-else-if="parkingLots.length === 0">No Parking Lots Available</h3>
+        <h3 v-else>Parking Lots</h3>
+        <div v-if="!loading" class="parking-lots">
           <div v-for="lot in parkingLots" :key="lot.id" class="lot-card">
-            <h4>{{ lot.primeLocation }} <span>(Occupied: {{ lot.occupiedSpots.length }}/{{ lot.total }})</span></h4>
+            <h2>
+              {{ lot.address }} (Occupied: {{ lot.occupied }}/{{ lot.total }})
+            </h2>
             <div class="button-group">
               <button class="action-btn edit-btn" @click="openEditModal(lot)">Edit</button>
               <button class="action-btn delete-btn" @click="deleteLot(lot.id)">Delete</button>
             </div>
             <div class="parking-grid">
-              <span v-for="n in lot.total" :key="n" :class="['parking-spot', { occupied: lot.occupiedSpots.includes(n) }]" @click="openSlotModal(lot, n)">
-                {{ lot.occupiedSpots.includes(n) ? 'O' : 'A' }}
+              <span
+                v-for="slot in lot.slots"
+                :key="slot.slot_number"
+                :class="['parking-spot', { occupied: slot.status === 'O' }]"
+                @click="openSlotModal(lot, slot)"
+                style="cursor:pointer"
+              >
+                {{ slot.status }}
               </span>
             </div>
           </div>
@@ -148,7 +158,7 @@
               </div>
             </div>
             <div class="button-group">
-              <button class="action-btn delete-btn" @click="deleteSlot(selectedLot.id, selectedSlot); closeAvailableSlotModal()">Delete</button>
+              <button class="action-btn delete-btn" @click="deleteSlot(selectedLot.id, selectedSlot.slot_number); closeAvailableSlotModal()">Delete</button>
               <button class="action-btn cancel-btn" @click="closeAvailableSlotModal">Close</button>
             </div>
           </div>
@@ -165,6 +175,26 @@
             </div>
             <div class="button-group">
               <button class="action-btn cancel-btn" @click="closeDeletionRestrictionModal">Close</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slot Details Modal -->
+        <div v-if="slotModalVisible" class="modal-overlay" @click.self="closeSlotModal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Slot Details</h3>
+            </div>
+            <div class="modal-body">
+              <p>Parking Lot: {{ selectedLot.primeLocation }}</p>
+              <p>Slot Number: {{ selectedSlot.slot_number }}</p>
+              <p>Status: {{ selectedSlot.status === 'O' ? 'Occupied' : 'Available' }}</p>
+              <p v-if="selectedSlot.status === 'O'">Vehicle: {{ selectedSlot.vehicle_id }}</p>
+              <p v-if="selectedSlot.status === 'O'">User: {{ selectedSlot.username }}</p>
+            </div>
+            <div class="button-group">
+              <button v-if="selectedSlot.status === 'A'" class="action-btn modal-delete-btn" @click="deleteSlot(selectedLot.id, selectedSlot.slot_number)">Delete</button>
+              <button class="action-btn modal-cancel-btn" @click="closeSlotModal">Close</button>
             </div>
           </div>
         </div>
@@ -188,6 +218,7 @@ export default {
       occupiedSlotModalVisible: false,
       availableSlotModalVisible: false,
       deletionRestrictionModalVisible: false,
+      loading: true,
       newLot: {
         primeLocation: '',
         address: '',
@@ -207,6 +238,7 @@ export default {
       selectedLot: {},
       selectedSlot: null,
       parkingLots: [],
+      slotModalVisible: false,
     };
   },
   methods: {
@@ -264,6 +296,7 @@ export default {
             pricePerHour: parseInt(this.newLot.pricePerHour),
             maxSpots: parseInt(this.newLot.maxSpots),
           }),
+          credentials: 'include'
         });
         const data = await response.json();
         if (response.ok) {
@@ -271,6 +304,7 @@ export default {
           this.closeAddModal();
           await this.fetchLots();
           console.log('New lot added:', data);
+          alert('Parking lot added successfully!');
         } else {
           alert(data.error || 'Failed to add lot');
         }
@@ -312,29 +346,35 @@ export default {
       return true;
     },
     async fetchLots() {
+      this.loading = true;
       try {
-        const response = await fetch('/api/admin/lots');
+        const response = await fetch('/api/admin/lots', { credentials: 'include' });
         const data = await response.json();
         if (response.ok) {
-          this.parkingLots = data.map(lot => ({
-            ...lot,
-            occupiedSpots: lot.occupiedSpots || []
+          this.parkingLots = data;
+          // Fetch slots for each lot and attach them
+          await Promise.all(this.parkingLots.map(async lot => {
+            const res = await fetch(`/api/admin/lots/${lot.id}/slots`, { credentials: 'include' });
+            lot.slots = await res.json();
           }));
         } else {
-          this.$router.push('/login');
+          console.error('Failed to fetch lots:', data.error);
         }
       } catch (err) {
-        this.$router.push('/login');
+        console.error('Error fetching lots:', err);
+      } finally {
+        this.loading = false;
       }
     },
-    async openSlotModal(lot, slot) {
-      this.selectedLot = { ...lot };
+    openSlotModal(lot, slot) {
+      this.selectedLot = lot;
       this.selectedSlot = slot;
-      if (lot.occupiedSpots.includes(slot)) {
-        this.occupiedSlotModalVisible = true;
-      } else {
-        this.availableSlotModalVisible = true;
-      }
+      this.slotModalVisible = true;
+    },
+    closeSlotModal() {
+      this.slotModalVisible = false;
+      this.selectedLot = {};
+      this.selectedSlot = null;
     },
     closeOccupiedSlotModal() {
       this.occupiedSlotModalVisible = false;
@@ -348,13 +388,17 @@ export default {
     },
     async deleteLot(lotId) {
       try {
-        const response = await fetch(`/api/admin/lots/${lotId}`, { method: 'DELETE' });
+        const response = await fetch(`/api/admin/lots/${lotId}`, { method: 'DELETE', credentials: 'include' });
         const data = await response.json();
         if (response.ok) {
           this.parkingLots = this.parkingLots.filter(l => l.id !== lotId);
           console.log('Deleted lot:', lotId);
+          alert('Parking lot deleted successfully!');
         } else {
           alert(data.error || 'Failed to delete lot');
+          if (response.status === 400 && data.error === 'Cannot delete lot with occupied slots') {
+            this.deletionRestrictionModalVisible = true;
+          }
         }
       } catch (err) {
         alert('Server error: ' + err.message);
@@ -362,13 +406,14 @@ export default {
     },
     async addSlot(lotId) {
       try {
-        const response = await fetch(`/api/admin/lots/${lotId}/slots`, { method: 'POST' });
+        const response = await fetch(`/api/admin/lots/${lotId}/slots`, { method: 'POST', credentials: 'include' });
         const data = await response.json();
         if (response.ok) {
           const lot = this.parkingLots.find(l => l.id === lotId);
           lot.total += 1;
           await this.fetchLots();
           console.log('Slot added:', data);
+          alert('Slot added successfully!');
         } else {
           alert(data.error || 'Failed to add slot');
         }
@@ -377,34 +422,28 @@ export default {
       }
     },
     async deleteSlot(lotId, slotNumber) {
-      const lot = this.parkingLots.find(l => l.id === lotId);
-      if (lot.occupiedSpots.includes(slotNumber)) {
-        console.log('Cannot delete an occupied slot!');
-        return;
-      }
       try {
-        const response = await fetch(`/api/admin/lots/${lotId}/slots/${slotNumber}`, { method: 'DELETE' });
+        const response = await fetch(`/api/admin/lots/${lotId}/slots/${slotNumber}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
         const data = await response.json();
         if (response.ok) {
-          lot.total -= 1;
-          lot.occupiedSpots = lot.occupiedSpots.filter(s => s !== slotNumber && s <= lot.total);
-          lot.slotDetails = Object.fromEntries(
-            Object.entries(lot.slotDetails || {}).filter(([key]) => parseInt(key) !== slotNumber)
-          );
-          await this.fetchLots();
-          console.log(`Deleted slot ${slotNumber} from ${lot.primeLocation}`);
+          this.closeSlotModal();
+          await this.fetchLots(); // Refresh lots and slots
         } else {
           alert(data.error || 'Failed to delete slot');
         }
       } catch (err) {
-        alert('Server error: ' + err.message);
+        alert('Server error');
       }
     },
     closeDeletionRestrictionModal() {
       this.deletionRestrictionModalVisible = false;
     },
     getSlotDetails(slot) {
-      return this.selectedLot.slotDetails?.[slot] || { vehicleId: 'N/A', occupationTime: 'N/A' };
+      const slotData = this.selectedLot.slots.find(s => s.slot_number === slot);
+      return slotData || { vehicleId: 'N/A', occupationTime: 'N/A' };
     },
     async updateLot() {
       if (!this.validateEditForm()) return;
@@ -420,6 +459,7 @@ export default {
             pricePerHour: parseInt(this.editLotData.pricePerHour),
             maxSpots: parseInt(this.editLotData.total),
           }),
+          credentials: 'include'
         });
         const data = await response.json();
         if (response.ok) {
@@ -430,6 +470,7 @@ export default {
           this.closeEditModal();
           await this.fetchLots();
           console.log('Lot updated:', data);
+          alert('Parking lot updated successfully!');
         } else {
           alert(data.error || 'Failed to update lot');
         }
@@ -469,5 +510,13 @@ export default {
 }
 .dashboard-add-btn:hover {
   background-color: #159c86;
+}
+.occupied {
+  background: #e74c3c;
+  color: #fff;
+}
+.available {
+  background: #1abc9c;
+  color: #fff;
 }
 </style>
