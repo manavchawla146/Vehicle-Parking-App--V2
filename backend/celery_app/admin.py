@@ -141,8 +141,11 @@ def update_lot(lot_id):
 
     lot = ParkingLot.query.get_or_404(lot_id)
     data = request.json
-    old_count = lot.number_of_spots
     new_count = data.get('maxSpots', lot.number_of_spots)
+    # Count currently occupied spots
+    occupied_count = ParkingSpot.query.filter_by(lot_id=lot_id, status='O').count()
+    if new_count < occupied_count:
+        return jsonify({'error': f'Cannot reduce slots below number of occupied spots ({occupied_count})'}), 400
     lot.prime_location_name = data.get('primeLocation', lot.prime_location_name)
     lot.address = data.get('address', lot.address)
     lot.pin_code = data.get('pinCode', lot.pin_code)

@@ -97,7 +97,6 @@
             <label>Total Cost:</label>
             <input type="text" v-model="releaseModalData.totalCost" readonly class="form-input prefilled">
           </div>
-       
           <div class="form-actions">
             <button class="action-btn release-btn" @click="confirmRelease">Release</button>
             <button class="action-btn cancel-btn" @click="closeReleaseModal">Cancel</button>
@@ -182,7 +181,7 @@ export default {
       selectedHistory: null,
       selectedLot: null,
       userProfile: null,
-      showModal: false,
+      showModal: false, // boolean for modal visibility
       slots: []
     };
   },
