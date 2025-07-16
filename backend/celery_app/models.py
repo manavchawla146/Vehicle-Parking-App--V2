@@ -31,19 +31,29 @@ class ParkingLot(db.Model):
     number_of_spots = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # One foreign key (optional, but can assume linked to a user/admin who created it)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
-    spots = relationship('ParkingSpot', backref='lot', lazy=True)
+    spots = db.relationship('ParkingSpot', backref='lot', lazy=True)
+
+    def generate_spots(self):
+        """Auto-generate parking spots based on number_of_spots."""
+        from . import db
+        for i in range(1, self.number_of_spots + 1):
+            spot = ParkingSpot(lot_id=self.id, slot_number=i, status='A')
+            db.session.add(spot)
+        db.session.commit()
+
 
 class ParkingSpot(db.Model):
     __tablename__ = 'parking_spots'
 
     id = db.Column(db.Integer, primary_key=True)
-    lot_id = db.Column(db.Integer, db.ForeignKey('parking_lots.id'))  # FK to ParkingLot
-    status = db.Column(db.String(1), nullable=False, default='A')  # 'A' for available, 'O' for occupied
+    lot_id = db.Column(db.Integer, db.ForeignKey('parking_lots.id'), nullable=False)
+    slot_number = db.Column(db.Integer, nullable=False)
+    status = db.Column(db.String(1), nullable=False, default='A')  # 'A' = Available, 'O' = Occupied
     vehicle_id = db.Column(db.String(50), nullable=True)
     occupation_time = db.Column(db.DateTime, nullable=True)
     username = db.Column(db.String(80), nullable=True)
+
 
 class Reservation(db.Model):
     __tablename__ = 'reservations'

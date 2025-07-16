@@ -24,10 +24,11 @@ def add_lot():
             created_at=datetime.utcnow()
         )
         db.session.add(lot)
+        db.session.commit()  # Commit to get the lot.id
         
         # Initialize ParkingSpot records for the new lot
         for i in range(1, data['maxSpots'] + 1):
-            spot = ParkingSpot(lot_id=lot.id, status='A')
+            spot = ParkingSpot(lot_id=lot.id, slot_number=i, status='A')
             db.session.add(spot)
         
         db.session.commit()
