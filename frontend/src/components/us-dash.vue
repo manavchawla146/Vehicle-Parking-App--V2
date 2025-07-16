@@ -28,7 +28,7 @@
                   <td>{{ history.vehicleNo }}</td>
                   <td>{{ history.timestamp }}</td>
                   <td>
-                    <button class="action-btn" :class="history.action === 'Release' ? 'release-btn' : 'parked-btn'" @click="showModal(history.id, history.action)">{{ history.action }}</button>
+                    <button class="action-btn" :class="history.action === 'Release' ? 'release-btn' : 'parked-btn'" @click="openReleaseModal(history)">{{ history.action }}</button>
                   </td>
                 </tr>
               </tbody>
@@ -246,30 +246,15 @@ export default {
         this.userProfile = { name: 'Unknown User' };
       }
     },
-    async showModal(id, action) {
-      if (action === 'Release') {
-        const history = this.parkingHistory.find(h => h.id === id);
-        this.selectedHistory = history;
-        this.releaseModalData.spotId = id.toString();
-        this.releaseModalData.vehicleNo = history ? history.vehicleNo : "";
-        this.releaseModalData.parkingTime = history ? history.timestamp : "";
-        this.releaseModalData.releasingTime = history ? new Date().toLocaleString() : "";
-        this.releaseModalData.totalCost = history ? "$10.00" : "";
-        this.showReleaseModal = true;
-        this.showBookModal = false;
-      } else if (action === 'Book') {
-        const lot = this.parkingLots.find(l => l.id === id);
-        this.selectedLot = lot;
-        if (!this.userProfile) await this.fetchUserProfile();
-        const availableSpot = await this.getAvailableSpot(lot.id);
-        this.bookModalData.spotId = availableSpot ? availableSpot.id.toString() : "N/A";
-        this.bookModalData.lotName = lot ? lot.primeLocation : "N/A";
-        this.bookModalData.username = this.userProfile ? this.userProfile.name : "Unknown User";
-        this.bookModalData.price = lot ? `$${lot.pricePerHour.toFixed(2)}` : "N/A";
-        this.bookModalData.vehicleNo = "";
-        this.showBookModal = true;
-        this.showReleaseModal = false;
-      }
+    async openReleaseModal(history) {
+      this.selectedHistory = history;
+      this.releaseModalData.spotId = history.id.toString();
+      this.releaseModalData.vehicleNo = history ? history.vehicleNo : "";
+      this.releaseModalData.parkingTime = history ? history.timestamp : "";
+      this.releaseModalData.releasingTime = history ? new Date().toLocaleString() : "";
+      this.releaseModalData.totalCost = history ? "$10.00" : "";
+      this.showReleaseModal = true;
+      this.showBookModal = false;
     },
     async getAvailableSpot(lotId) {
       try {
