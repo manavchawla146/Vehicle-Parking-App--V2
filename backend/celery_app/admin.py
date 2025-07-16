@@ -196,9 +196,10 @@ def get_lot_slots(lot_id):
     slots = ParkingSpot.query.filter_by(lot_id=lot_id).order_by(ParkingSpot.slot_number).all()
     return jsonify([
         {
-            'id': slot.id,
-            'slot_number': slot.slot_number,
-            'status': slot.status
+            "slot_number": slot.slot_number,
+            "status": slot.status,
+            "vehicle_id": slot.vehicle_id,
+            "username": slot.username
         }
         for slot in slots
     ])

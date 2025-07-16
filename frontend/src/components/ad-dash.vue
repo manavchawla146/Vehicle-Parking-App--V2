@@ -250,8 +250,8 @@ export default {
         address: lot.address,
         pinCode: lot.pinCode,
         pricePerHour: lot.pricePerHour,
-        total: lot.total,
-        occupiedSpots: [...lot.occupiedSpots],
+        total: lot.total
+        // No occupiedSpots needed
       };
       this.editModalVisible = true;
     },
@@ -393,7 +393,8 @@ export default {
         if (response.ok) {
           this.parkingLots = this.parkingLots.filter(l => l.id !== lotId);
           console.log('Deleted lot:', lotId);
-          alert('Parking lot deleted successfully!');
+          // this.$message.success('Parking lot deleted successfully!');
+          
         } else {
           alert(data.error || 'Failed to delete lot');
           if (response.status === 400 && data.error === 'Cannot delete lot with occupied slots') {
@@ -470,7 +471,7 @@ export default {
           this.closeEditModal();
           await this.fetchLots();
           console.log('Lot updated:', data);
-          alert('Parking lot updated successfully!');
+          // this.$message.success('Parking lot updated successfully!'); // This line was removed
         } else {
           alert(data.error || 'Failed to update lot');
         }
