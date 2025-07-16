@@ -1,3 +1,4 @@
+
 from . import db
 from datetime import datetime
 from sqlalchemy.orm import relationship
@@ -9,7 +10,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
-    role = db.Column(db.String(10), nullable=False, default='user')  # 'user' or 'admin'
+    role = db.Column(db.String(10), nullable=False, default='user')
     address = db.Column(db.String(255), nullable=True)
     pincode = db.Column(db.String(10), nullable=True)
     banned = db.Column(db.Boolean, default=False)
@@ -30,26 +31,25 @@ class ParkingLot(db.Model):
     number_of_spots = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # One foreign key (optional, but can assume linked to a user/admin who created it)
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
     spots = relationship('ParkingSpot', backref='lot', lazy=True)
 
 class ParkingSpot(db.Model):
     __tablename__ = 'parking_spots'
 
     id = db.Column(db.Integer, primary_key=True)
-    lot_id = db.Column(db.Integer, db.ForeignKey('parking_lots.id'), nullable=False)
-    slot_number = db.Column(db.Integer, nullable=False)  # Added to track slot position
-    status = db.Column(db.String(1), default='A')  # A = Available, O = Occupied
-    vehicle_id = db.Column(db.String(50), nullable=True)  # Added for occupy_slot
-    occupation_time = db.Column(db.DateTime, nullable=True)  # Added for occupy_slot
-
-    reservations = relationship('Reservation', backref='spot', lazy=True)
+    lot_id = db.Column(db.Integer, db.ForeignKey('parking_lots.id'))  # FK to ParkingLot
+    status = db.Column(db.String(1), nullable=False, default='A')  # 'A' for available, 'O' for occupied
+    vehicle_id = db.Column(db.String(50), nullable=True)
+    occupation_time = db.Column(db.DateTime, nullable=True)
+    username = db.Column(db.String(80), nullable=True)
 
 class Reservation(db.Model):
     __tablename__ = 'reservations'
 
     id = db.Column(db.Integer, primary_key=True)
-    spot_id = db.Column(db.Integer, db.ForeignKey('parking_spots.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
     parking_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     leaving_timestamp = db.Column(db.DateTime, nullable=True)
     parking_cost = db.Column(db.Float, nullable=True)
@@ -59,8 +59,8 @@ class ExportTask(db.Model):
     __tablename__ = 'export_tasks'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    status = db.Column(db.String(20), default='pending')  # pending, processing, done
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
+    status = db.Column(db.String(20), default='pending')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime, nullable=True)
     download_link = db.Column(db.String(255), nullable=True)
@@ -69,6 +69,6 @@ class ReminderLog(db.Model):
     __tablename__ = 'reminder_logs'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
     reminder_type = db.Column(db.String(50))  # daily, monthly
     sent_at = db.Column(db.DateTime, default=datetime.utcnow)

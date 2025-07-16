@@ -229,7 +229,7 @@ export default {
       this.resetEditData();
     },
     closeAddModal() {
-      this.showModal = false; // Ensure modal closes
+      this.showModal = false;
       this.resetNewLot();
     },
     resetEditData() {
@@ -267,9 +267,9 @@ export default {
         });
         const data = await response.json();
         if (response.ok) {
-          this.parkingLots.push(data); // Add new lot immediately
+          this.parkingLots.push(data);
           this.closeAddModal();
-          await this.fetchLots(); // Refresh to ensure consistency
+          await this.fetchLots();
           console.log('New lot added:', data);
         } else {
           alert(data.error || 'Failed to add lot');
@@ -316,7 +316,10 @@ export default {
         const response = await fetch('/api/admin/lots');
         const data = await response.json();
         if (response.ok) {
-          this.parkingLots = data;
+          this.parkingLots = data.map(lot => ({
+            ...lot,
+            occupiedSpots: lot.occupiedSpots || []
+          }));
         } else {
           this.$router.push('/login');
         }

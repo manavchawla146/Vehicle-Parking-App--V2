@@ -1,6 +1,10 @@
 from flask import Blueprint, request, jsonify, session
-from .models import db, ParkingLot, User
+from .models import db, ParkingLot, User, ParkingSpot
 from datetime import datetime
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -10,17 +14,35 @@ def add_lot():
         return jsonify({'error': 'Unauthorized'}), 403
 
     data = request.json
-    lot = ParkingLot(
-        prime_location_name=data['primeLocation'],
-        price=data['pricePerHour'],
-        address=data['address'],
-        pin_code=data['pinCode'],
-        number_of_spots=data['maxSpots'],
-        created_at=datetime.utcnow()
-    )
-    db.session.add(lot)
-    db.session.commit()
-    return jsonify({'message': 'Lot added successfully', 'id': lot.id}), 201
+    try:
+        lot = ParkingLot(
+            prime_location_name=data['primeLocation'],
+            price=data['pricePerHour'],
+            address=data['address'],
+            pin_code=data['pinCode'],
+            number_of_spots=data['maxSpots'],
+            created_at=datetime.utcnow()
+        )
+        db.session.add(lot)
+        
+        # Initialize ParkingSpot records for the new lot
+        for i in range(1, data['maxSpots'] + 1):
+            spot = ParkingSpot(lot_id=lot.id, status='A')
+            db.session.add(spot)
+        
+        db.session.commit()
+        logger.info(f"Successfully added lot {lot.id} with {data['maxSpots']} spots")
+        return jsonify({'message': 'Lot added successfully', 'id': lot.id}), 201
+    except KeyError as e:
+        logger.error(f"Missing required field: {e}")
+        return jsonify({'error': f'Missing required field: {e}'}), 400
+    except ValueError as e:
+        logger.error(f"Invalid data: {e}")
+        return jsonify({'error': f'Invalid data: {e}'}), 400
+    except Exception as e:
+        logger.error(f"Error adding lot: {e}")
+        db.session.rollback()
+        return jsonify({'error': f'Internal server error: {e}'}), 500
 
 @admin_bp.route('/lots', methods=['GET'])
 def get_lots():
@@ -34,15 +56,8 @@ def get_lots():
             'pricePerHour': lot.price,
             'total': lot.number_of_spots,
             'createdAt': lot.created_at.isoformat(),
-            'occupiedSpots': [spot.slot_number for spot in lot.spots if spot.status == 'O'],
-            'slotDetails': {
-                str(spot.slot_number): {
-                    'status': spot.status,
-                    'vehicleId': spot.vehicle_id or 'N/A',
-                    'occupationTime': spot.occupation_time.isoformat() if spot.occupation_time else 'N/A'
-                }
-                for spot in lot.spots
-            }
+            'occupiedSpots': [],
+            'slotDetails': {}
         }
         for lot in lots
     ])
@@ -72,7 +87,7 @@ def add_slot(lot_id):
     slot = ParkingSpot(lot_id=lot_id, slot_number=new_slot_number, status='A')
     db.session.add(slot)
     db.session.commit()
-    return jsonify({'message': 'Slot added successfully', 'slotNumber': new_slot_number}), 201
+    return jsonify({'message': 'Slot added manually successfully', 'slotNumber': new_slot_number}), 201
 
 @admin_bp.route('/lots/<int:lot_id>/slots/<int:slot_number>', methods=['DELETE'])
 def delete_slot(lot_id, slot_number):
