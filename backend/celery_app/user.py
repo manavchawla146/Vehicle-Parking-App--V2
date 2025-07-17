@@ -227,11 +227,7 @@ def release_parking():
 
         db.session.commit()
 
-        return jsonify({
-            'message': 'Parking released and usage logged',
-            'cost': cost,
-            'exit_time': exit_time.isoformat()
-        })
+        return jsonify({'message': 'Parking released and usage logged'}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to release parking spot'}), 500

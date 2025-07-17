@@ -357,19 +357,16 @@ export default {
         const data = await response.json();
 
         if (response.ok) {
-          this.releaseModalData.releasingTime = new Date(data.leavingTime).toLocaleString();
-          this.releaseModalData.totalCost = `$${data.parkingCost.toFixed(2)}`;
-          // Refresh data to update UI
+          // Success: update UI, close modal
           await this.fetchParkingLots();
           await this.fetchUserParkingHistory();
-          // Close the modal after updating
           this.closeReleaseModal();
         } else {
-          alert(`Failed to release parking: ${data.error}`);
+          // Only show alert if the backend says it's an error
+          alert(data.error || "Failed to release parking spot!");
         }
       } catch (error) {
-        console.error('Error releasing parking:', error);
-        alert("Error releasing parking spot!");
+        alert("Network error releasing parking spot!");
       }
     },
     async bookSlot(lotId) {
