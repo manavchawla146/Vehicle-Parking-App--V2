@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, session, request
-from .models import db, User, ParkingLot, ParkingSpot, Reservation
+from .models import db, User, ParkingLot, ParkingSpot, Reservation, ParkingUsageLog
 from datetime import datetime, timezone
 import logging
 
@@ -118,9 +118,120 @@ def reserve_parking():
     reservation = Reservation(
         spot_id=spot.id,
         user_id=user_id,
-        parking_timestamp=current_time
+        parking_timestamp=datetime.now(timezone.utc).replace(tzinfo=None)
     )
     db.session.add(reservation)
     db.session.commit()
     logger.info(f"Successfully reserved spot {spot.id} in lot {lot.id} for user {user_id} at {current_time}")
     return jsonify({'message': 'Parking reserved successfully', 'reservationId': reservation.id, 'spotId': spot.id})
+
+@user_bp.route('/user/parking-history', methods=['GET'])
+def get_user_parking_history():
+    user_id = session.get('user_id')
+    if not user_id or user_id == 'admin':
+        return jsonify({'error': 'Not logged in or admin'}), 401
+
+    # 1. Active reservations (not yet released)
+    active_reservations = Reservation.query.filter_by(user_id=user_id, leaving_timestamp=None).all()
+    active_rows = []
+    for res in active_reservations:
+        spot = res.spot
+        lot = spot.lot
+        active_rows.append({
+            'type': 'active',
+            'id': spot.id,
+            'location': lot.prime_location_name if hasattr(lot, 'prime_location_name') else lot.address,
+            'vehicle_no': spot.vehicle_id,
+            'timestamp': res.parking_timestamp.isoformat() if res.parking_timestamp else '',
+            'slot_number': spot.slot_number,
+        })
+
+    # 2. Completed sessions from ParkingUsageLog
+    usage_logs = ParkingUsageLog.query.filter_by(user_id=user_id).order_by(ParkingUsageLog.exit_time.desc()).all()
+    parked_out_rows = []
+    for log in usage_logs:
+        spot = log.spot
+        lot = log.lot
+        parked_out_rows.append({
+            'type': 'parked_out',
+            'id': spot.id,
+            'location': lot.prime_location_name if hasattr(lot, 'prime_location_name') else lot.address,
+            'vehicle_no': log.vehicle_id,
+            'timestamp': log.entry_time.isoformat() if log.entry_time else None,
+            'releasing_time': log.exit_time.isoformat() if log.exit_time else None,
+            'total_cost': log.cost,
+            'slot_number': spot.slot_number,
+        })
+
+    # Combine and return
+    return jsonify(active_rows + parked_out_rows)
+
+@user_bp.route('/parking/release', methods=['POST'])
+def release_parking():
+    user_id = session.get('user_id')
+    if not user_id or user_id == 'admin':
+        return jsonify({'error': 'Not logged in or admin'}), 401
+
+    data = request.json
+    spot_id = data.get('spotId')
+
+    if not spot_id:
+        return jsonify({'error': 'Missing spotId'}), 400
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    spot = ParkingSpot.query.get(spot_id)
+    if not spot:
+        return jsonify({'error': 'Spot not found'}), 404
+
+    if spot.status != 'O':
+        return jsonify({'error': 'Spot is not occupied'}), 400
+
+    if spot.username != user.username:
+        return jsonify({'error': 'You can only release your own parking spot'}), 403
+
+    try:
+        lot = ParkingLot.query.get(spot.lot_id)
+        exit_time = datetime.now(timezone.utc).replace(tzinfo=None)
+        reservation = Reservation.query.filter_by(spot_id=spot_id, user_id=user_id).order_by(Reservation.id.desc()).first()
+        entry_time = reservation.parking_timestamp
+        duration_hours = max((exit_time - entry_time).total_seconds() / 3600, 1)  # Minimum 1 hour
+        cost = duration_hours * lot.price
+
+        # Log usage
+        usage_log = ParkingUsageLog(
+            user_id=user_id,
+            spot_id=spot_id,
+            lot_id=lot.id,
+            vehicle_id=spot.vehicle_id,
+            entry_time=entry_time,
+            exit_time=exit_time,
+            duration=duration_hours,
+            cost=cost,
+            remarks="Auto-logged on release"
+        )
+        db.session.add(usage_log)
+
+        # Update reservation
+        if reservation:
+            reservation.leaving_timestamp = exit_time
+            reservation.parking_cost = cost
+
+        # Update spot
+        spot.status = 'A'
+        spot.vehicle_id = None
+        spot.occupation_time = None
+        spot.username = None
+
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Parking released and usage logged',
+            'cost': cost,
+            'exit_time': exit_time.isoformat()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to release parking spot'}), 500

@@ -22,13 +22,22 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="history in parkingHistory" :key="history.id">
+                <tr v-for="history in parkingHistory" :key="history.id + history.type">
                   <td>{{ history.id }}</td>
                   <td>{{ history.location }}</td>
-                  <td>{{ history.vehicleNo }}</td>
-                  <td>{{ history.timestamp }}</td>
+                  <td>{{ history.vehicle_no }}</td>
                   <td>
-                    <button class="action-btn" :class="history.action === 'Release' ? 'release-btn' : 'parked-btn'" @click="openReleaseModal(history)">{{ history.action }}</button>
+                    {{ history.timestamp ? new Date(history.timestamp).toLocaleString() : '' }}
+                  </td>
+                  <td>
+                    <span v-if="history.type === 'parked_out'" class="status-text">
+                      Parked Out<br>
+                     </span>
+                    <button
+                      v-else
+                      class="action-btn release-btn"
+                      @click="openReleaseModal(history)"
+                    >Release</button>
                   </td>
                 </tr>
               </tbody>
@@ -165,13 +174,7 @@ export default {
   },
   data() {
     return {
-      parkingHistory: [
-        { id: 120, location: "xxxxx", vehicleNo: "TW31888", timestamp: "xx-xx-xx 10:00", action: "Release" },
-        { id: 142, location: "xxxxx", vehicleNo: "AP310921", timestamp: "xx-xx-xx 12:00", action: "Parked Out" },
-        { id: 150, location: "yyyyy", vehicleNo: "MH12AB1234", timestamp: "xx-xx-xx 09:00", action: "Release" },
-        { id: 160, location: "zzzzz", vehicleNo: "DL01CD5678", timestamp: "xx-xx-xx 14:00", action: "Parked Out" },
-        { id: 170, location: "aaaaa", vehicleNo: "GJ02EF9012", timestamp: "xx-xx-xx 11:00", action: "Release" }
-      ],
+      parkingHistory: [], // Remove hardcoded data - will be fetched from database
       parkingLots: [],
       searchQuery: "",
       showReleaseModal: false,
@@ -246,13 +249,70 @@ export default {
         this.userProfile = { name: 'Unknown User' };
       }
     },
+
+    async fetchUserParkingHistory() {
+      try {
+        const response = await fetch('/api/user/parking-history', {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (response.ok) {
+          this.parkingHistory = data.map(row => ({
+            ...row,
+            displayTime: row.timestamp ? new Date(row.timestamp).toLocaleString() : ''
+          }));
+        } else {
+          console.error('Failed to fetch parking history:', data.error);
+          this.parkingHistory = [];
+        }
+      } catch (error) {
+        console.error('Error fetching parking history:', error);
+        this.parkingHistory = [];
+      }
+    },
+
     async openReleaseModal(history) {
-      this.selectedHistory = history;
+        this.selectedHistory = history;
       this.releaseModalData.spotId = history.id.toString();
-      this.releaseModalData.vehicleNo = history ? history.vehicleNo : "";
-      this.releaseModalData.parkingTime = history ? history.timestamp : "";
-      this.releaseModalData.releasingTime = history ? new Date().toLocaleString() : "";
-      this.releaseModalData.totalCost = history ? "$10.00" : "";
+      this.releaseModalData.vehicleNo = history.vehicleNo;
+      this.releaseModalData.parkingTime = history.displayTime; // Use display time
+      
+      // Calculate real release time and cost using consistent time methods
+      const parkingTime = new Date(history.timestamp); // Use original timestamp
+      const releaseTime = new Date(); // Current time
+      
+      // Debug logging
+      console.log('Original timestamp from backend:', history.timestamp);
+      console.log('Parking time:', parkingTime);
+      console.log('Release time:', releaseTime);
+      console.log('Is parking time valid?', !isNaN(parkingTime.getTime()));
+      
+      // Check if parking time is valid
+      if (isNaN(parkingTime.getTime())) {
+        console.error('Invalid parking time:', history.timestamp);
+        alert('Error: Invalid parking time detected. Please contact support.');
+        return;
+      }
+      
+      const durationMs = releaseTime.getTime() - parkingTime.getTime();
+      const durationHours = durationMs / (1000 * 60 * 60); // Convert to hours
+      
+      console.log('Duration in milliseconds:', durationMs);
+      console.log('Duration in hours:', durationHours);
+      
+      // Use dynamic price from the lot
+      const pricePerHour = history.pricePerHour || 5; // Fallback to $5 if not available
+      
+      // Calculate cost with minimum charge of 1 hour
+      let totalCost = Math.max(durationHours * pricePerHour, pricePerHour);
+      totalCost = totalCost.toFixed(2);
+      
+      console.log('Price per hour:', pricePerHour);
+      console.log('Total cost:', totalCost);
+      
+      this.releaseModalData.releasingTime = releaseTime.toLocaleString();
+      this.releaseModalData.totalCost = `$${totalCost}`;
+      
       this.showReleaseModal = true;
       this.showBookModal = false;
     },
@@ -283,9 +343,34 @@ export default {
       this.showBookModal = false;
       this.selectedLot = null;
     },
-    confirmRelease() {
-      console.log("Release confirmed:", this.releaseModalData);
-      this.closeReleaseModal();
+    async confirmRelease() {
+      try {
+        const response = await fetch('/api/parking/release', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            spotId: this.releaseModalData.spotId
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          this.releaseModalData.releasingTime = new Date(data.leavingTime).toLocaleString();
+          this.releaseModalData.totalCost = `$${data.parkingCost.toFixed(2)}`;
+          // Refresh data to update UI
+          await this.fetchParkingLots();
+          await this.fetchUserParkingHistory();
+          // Close the modal after updating
+          this.closeReleaseModal();
+        } else {
+          alert(`Failed to release parking: ${data.error}`);
+        }
+      } catch (error) {
+        console.error('Error releasing parking:', error);
+        alert("Error releasing parking spot!");
+      }
     },
     async bookSlot(lotId) {
       const lot = this.parkingLots.find(l => l.id === lotId);
@@ -333,6 +418,7 @@ export default {
           console.log("Reservation confirmed:", data);
           this.closeBookModal();
           await this.fetchParkingLots(); // Refresh to update availability
+          await this.fetchUserParkingHistory(); // Refresh parking history
           alert("Booking successful!");
         } else {
           console.error("Booking failed:", data.error);
@@ -347,6 +433,7 @@ export default {
   created() {
     this.fetchParkingLots();
     this.fetchUserProfile();
+    this.fetchUserParkingHistory();
   }
 };
 </script>
@@ -354,4 +441,28 @@ export default {
 <style scoped>
 @import url('../assets/us-dash.css');
 /* Additional scoped styles if needed */
+
+.status-text {
+  color: #ff3a24;
+  font-weight: bold;
+  padding: 5px 10px;
+  background-color: #fbeee0;
+  border-radius: 4px;
+  border: 1px solid #f5c6cb;
+}
+
+.action-btn.release-btn {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+
+.action-btn.release-btn:hover {
+  background-color: #388e3c;
+}
 </style>

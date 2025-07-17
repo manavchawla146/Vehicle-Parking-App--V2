@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import relationship
 
 class User(db.Model):
-    __tablename__ = 'users'
+    __tablename__ = 'user'
     
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -14,13 +14,17 @@ class User(db.Model):
     pincode = db.Column(db.String(10), nullable=True)
     banned = db.Column(db.Boolean, default=False)
 
-    reservations = relationship('Reservation', backref='user', lazy=True)
+    reservations = relationship('Reservation', backref='user', lazy=True, cascade="all, delete-orphan")
+    export_tasks = relationship('ExportTask', backref='user', lazy=True, cascade="all, delete-orphan")
+    reminder_logs = relationship('ReminderLog', backref='user', lazy=True, cascade="all, delete-orphan")
+    usage_logs = relationship('ParkingUsageLog', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def is_admin(self):
         return self.role == 'admin'
 
+
 class ParkingLot(db.Model):
-    __tablename__ = 'parking_lots'
+    __tablename__ = 'parking_lot'
 
     id = db.Column(db.Integer, primary_key=True)
     prime_location_name = db.Column(db.String(100), nullable=False)
@@ -30,17 +34,11 @@ class ParkingLot(db.Model):
     number_of_spots = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
 
-    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
-    spots = db.relationship(
-        'ParkingSpot',
-        backref='lot',
-        lazy=True,
-        cascade="all, delete-orphan"
-    )
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    spots = relationship('ParkingSpot', backref='lot', lazy=True, cascade="all, delete-orphan")
+    usage_logs = relationship('ParkingUsageLog', backref='lot', lazy=True, cascade="all, delete-orphan")
 
     def generate_spots(self):
-        """Auto-generate parking spots based on number_of_spots."""
-        from . import db
         for i in range(1, self.number_of_spots + 1):
             spot = ParkingSpot(lot_id=self.id, slot_number=i, status='A')
             db.session.add(spot)
@@ -48,65 +46,63 @@ class ParkingLot(db.Model):
 
 
 class ParkingSpot(db.Model):
-    __tablename__ = 'parking_spots'
+    __tablename__ = 'parking_spot'
 
     id = db.Column(db.Integer, primary_key=True)
-    lot_id = db.Column(
-        db.Integer,
-        db.ForeignKey('parking_lots.id', ondelete="CASCADE"),
-        nullable=False
-    )
+    lot_id = db.Column(db.Integer, db.ForeignKey('parking_lot.id', ondelete="CASCADE"), nullable=False)
     slot_number = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.String(1), nullable=False, default='A')  # 'A' = Available, 'O' = Occupied
+    status = db.Column(db.String(1), nullable=False, default='A')  # A = Available, O = Occupied
     vehicle_id = db.Column(db.String(50), nullable=True)
     occupation_time = db.Column(db.DateTime, nullable=True)
     username = db.Column(db.String(80), nullable=True)
+
+    reservations = relationship('Reservation', backref='spot', lazy=True, cascade="all, delete-orphan")
+    usage_logs = relationship('ParkingUsageLog', backref='spot', lazy=True, cascade="all, delete-orphan")
 
 
 class Reservation(db.Model):
     __tablename__ = 'reservations'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
-    spot_id = db.Column(db.Integer, db.ForeignKey('parking_spots.id'))  # <-- Add this line
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    spot_id = db.Column(db.Integer, db.ForeignKey('parking_spot.id'), nullable=False)
     parking_timestamp = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     leaving_timestamp = db.Column(db.DateTime, nullable=True)
     parking_cost = db.Column(db.Float, nullable=True)
     remarks = db.Column(db.String(255), nullable=True)
 
+
 class ExportTask(db.Model):
     __tablename__ = 'export_tasks'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     status = db.Column(db.String(20), default='pending')
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     completed_at = db.Column(db.DateTime, nullable=True)
     download_link = db.Column(db.String(255), nullable=True)
 
+
 class ReminderLog(db.Model):
     __tablename__ = 'reminder_logs'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # FK to User
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     reminder_type = db.Column(db.String(50))  # daily, monthly
     sent_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
 
+
 class ParkingUsageLog(db.Model):
-    __tablename__ = 'parking_usage_logs'
+    __tablename__ = 'parking_usage_log'
 
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    spot_id = db.Column(db.Integer, db.ForeignKey('parking_spot.id'), nullable=False)
+    lot_id = db.Column(db.Integer, db.ForeignKey('parking_lot.id'), nullable=False)
     
-    user_email = db.Column(db.String(120), nullable=False)
-    lot_name = db.Column(db.String(100), nullable=False)
-    spot_id = db.Column(db.Integer, nullable=False)
-    slot_number = db.Column(db.Integer, nullable=True)
-    
-    parking_timestamp = db.Column(db.DateTime, nullable=False)
-    leaving_timestamp = db.Column(db.DateTime, nullable=True)
-    duration_minutes = db.Column(db.Integer, nullable=True)
-    
-    parking_cost = db.Column(db.Float, nullable=True)
-    remarks = db.Column(db.String(255), nullable=True)
-
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    vehicle_id = db.Column(db.String(64), nullable=True)
+    entry_time = db.Column(db.DateTime, nullable=False)
+    exit_time = db.Column(db.DateTime, nullable=True)
+    duration = db.Column(db.Float, nullable=True)  # in hours
+    cost = db.Column(db.Float, nullable=True)
+    remarks = db.Column(db.String(256), nullable=True)
