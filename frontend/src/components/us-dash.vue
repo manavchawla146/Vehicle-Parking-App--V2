@@ -274,7 +274,7 @@ export default {
     async openReleaseModal(history) {
         this.selectedHistory = history;
       this.releaseModalData.spotId = history.id.toString();
-      this.releaseModalData.vehicleNo = history.vehicleNo;
+      this.releaseModalData.vehicleNo = history.vehicle_no || '';
       this.releaseModalData.parkingTime = history.displayTime; // Use display time
       
       // Calculate real release time and cost using consistent time methods
