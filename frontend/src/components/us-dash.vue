@@ -8,7 +8,10 @@
         <!-- Recent Parking History Box -->
         <div class="card">
           <div class="gradient-header">
-            <h3>Recent parking history</h3>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <h3>Recent parking history</h3>
+              <button class="action-btn" @click="exportParkingHistory">Export</button>
+            </div>
           </div>
           <div class="history-box">
             <table class="history-table">
@@ -425,6 +428,25 @@ export default {
         console.error("Server error during booking:", err.message);
         alert("Server error: " + err.message);
       }
+    },
+    exportParkingHistory() {
+      // Simple CSV export example
+      const headers = ['ID', 'LOCATION', 'VEHICLE NO', 'TIMESTAMP', 'ACTION'];
+      const rows = this.parkingHistory.map(h => [
+        h.id,
+        h.location,
+        h.vehicle_no,
+        h.timestamp ? new Date(h.timestamp).toLocaleString() : '',
+        h.type === 'parked_out' ? 'Parked Out' : 'Reserved'
+      ]);
+      let csvContent = headers.join(',') + '\n' + rows.map(e => e.join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', 'parking_history.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   },
   created() {
@@ -461,5 +483,20 @@ export default {
 
 .action-btn.release-btn:hover {
   background-color: #388e3c;
+}
+
+.export-btn {
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 16px;
+  transition: background 0.2s;
+}
+.export-btn:hover {
+  background-color: #1769aa;
 }
 </style>
