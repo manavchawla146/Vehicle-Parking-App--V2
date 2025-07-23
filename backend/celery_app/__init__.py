@@ -21,3 +21,18 @@ def create_app():
     from .admin import admin_bp
     app.register_blueprint(admin_bp)
     return app
+from celery import Celery
+
+celery = Celery(__name__, broker='redis://localhost:6379/0')
+
+def make_celery(app):
+    celery.conf.update(app.config)
+    TaskBase = celery.Task
+
+    class ContextTask(TaskBase):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return TaskBase.__call__(self, *args, **kwargs)
+
+    celery.Task = ContextTask
+    return celery
