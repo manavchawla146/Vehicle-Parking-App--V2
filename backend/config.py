@@ -8,6 +8,24 @@ SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:///../instance/app.d
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 # --------------------------
+# Caching Configuration
+# --------------------------
+CACHE_TYPE = "redis"
+CACHE_REDIS_URL = "redis://localhost:6379/1"  # Use different DB than Celery
+CACHE_DEFAULT_TIMEOUT = 300  # 5 minutes default
+CACHE_KEY_PREFIX = "parking_app_"
+
+# Cache timeouts for different types of data
+CACHE_TIMEOUTS = {
+    'lots': 300,        # 5 minutes for parking lots
+    'users': 600,       # 10 minutes for user data
+    'history': 120,     # 2 minutes for parking history
+    'notifications': 60, # 1 minute for notifications
+    'summary': 180,     # 3 minutes for summary data
+    'search': 60,       # 1 minute for search results
+}
+
+# --------------------------
 # Session Settings (Optional but Useful)
 # --------------------------
 SESSION_TYPE = 'filesystem'  # To store sessions server-side (safer than cookie-based)

@@ -3,7 +3,9 @@
     <us-nav />
     <div class="profile-container">
       <div class="profile-card">
-        <h2><i class="fas fa-user"></i> User Profile</h2>
+        <div class="dashboard-header">
+          <h2><i class="fas fa-user"></i> User Profile</h2>
+        </div>
         <div v-if="!isEditing" class="profile-details">
           <div class="detail-group">
             <label>Name:</label>
@@ -160,84 +162,46 @@ export default {
 .page-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #f0f4f8 0%, #d9e4f5 100%);
-  padding: 15px;
-}
-
-/* Compact navbar styles to match the profile card width */
-.page-container :deep(.us-nav),
-.page-container :deep(nav),
-.page-container :deep(.navbar) {
-  position: relative !important;
-  width: 120% !important;
-  max-width: 520px !important;
-  margin: 0 auto 15px auto !important;
-  border-radius: 15px !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
-  top: 0 !important;
-  left: auto !important;
-  right: auto !important;
-  transform: none !important;
-  padding: 8px 20px !important;
-  height: auto !important;
-  min-height: 45px !important;
-  max-height: 60px !important;
-  box-sizing: border-box !important;
-}
-
-/* Compact navbar content */
-.page-container :deep(.us-nav *),
-.page-container :deep(nav *),
-.page-container :deep(.navbar *) {
-  font-size: 14px !important;
-  padding: 6px 12px !important;
-  line-height: 1.2 !important;
-}
-
-.page-container :deep(.us-nav .nav-brand),
-.page-container :deep(nav .nav-brand),
-.page-container :deep(.navbar .nav-brand) {
-  font-size: 16px !important;
-  font-weight: 600 !important;
-  padding: 6px 8px !important;
-}
-
-.page-container :deep(.us-nav .nav-links),
-.page-container :deep(nav .nav-links),
-.page-container :deep(.navbar .nav-links) {
-  gap: 15px !important;
+  display: flex;
+  flex-direction: column;
 }
 
 .profile-container {
+  flex: 1;
+  padding: 20px;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: calc(100vh - 120px);
+  flex-direction: column;
 }
 
 .profile-card {
-  background: linear-gradient(90deg, #26a69a, #4dd0e1);
-  padding: 25px;
+  background: #ffffff;
   border-radius: 15px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+  flex: 1;
+  margin: 0;
   width: 100%;
-  max-width: 450px;
-  text-align: center;
-  color: white;
-  position: relative;
-  overflow: hidden;
+  max-width: none;
 }
 
-.profile-card h2 {
-  font-size: 26px;
-  font-family: 'Roboto', sans-serif;
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 0 16px;
+}
+
+.dashboard-header h2 {
+  margin: 0;
+  font-size: 24px;
   font-weight: 500;
-  margin-bottom: 25px;
-  position: relative;
-  z-index: 1;
+  color: #2c3e50;
 }
 
-.profile-card h2 i {
-  margin-right: 10px;
+.dashboard-header h2 i {
+  margin-right: 8px;
+  color: #3498db;
 }
 
 .profile-details, .profile-edit {
@@ -256,7 +220,7 @@ export default {
   font-family: 'Roboto', sans-serif;
   font-weight: 500;
   margin-bottom: 8px;
-  color: #e0f7fa;
+  color: #333;
 }
 
 .detail-group span {
@@ -264,28 +228,29 @@ export default {
   font-size: 15px;
   font-family: 'Roboto', sans-serif;
   padding: 10px;
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: #f8f9fa;
   border-radius: 8px;
-  color: #ffffff;
+  color: #333;
+  border: 1px solid #e9ecef;
 }
 
 .profile-input {
   width: 100%;
   padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid #e9ecef;
   border-radius: 8px;
   font-size: 15px;
   font-family: 'Roboto', sans-serif;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background-color: #ffffff;
+  color: #333;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
   box-sizing: border-box;
 }
 
 .profile-input:focus {
   outline: none;
-  border-color: #e0f7fa;
-  box-shadow: 0 0 8px rgba(224, 247, 250, 0.5);
+  border-color: #3498db;
+  box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
 }
 
 .button-group {
@@ -307,65 +272,47 @@ export default {
 }
 
 .edit-btn {
-  background-color: #4dd0e1;
+  background-color: #3498db;
   color: #ffffff;
   width: 100%;
 }
 
 .edit-btn:hover {
-  background-color: #26a69a;
+  background-color: #2980b9;
   transform: translateY(-2px);
 }
 
 .save-btn {
-  background-color: #26a69a;
+  background-color: #27ae60;
   color: #ffffff;
 }
 
 .save-btn:hover {
-  background-color: #4dd0e1;
+  background-color: #229954;
   transform: translateY(-2px);
 }
 
 .cancel-btn {
-  background-color: #b2ebf2;
-  color: #26a69a;
+  background-color: #95a5a6;
+  color: #ffffff;
 }
 
 .cancel-btn:hover {
-  background-color: #e0f7fa;
+  background-color: #7f8c8d;
   transform: translateY(-2px);
 }
 
-.profile-card::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-  z-index: 0;
-  animation: rotate 15s linear infinite;
-}
-
-@keyframes rotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
 @media (max-width: 600px) {
-  .page-container {
-    padding: 10px;
+  .profile-container {
+    padding: 15px;
   }
   
   .profile-card {
     padding: 20px;
-    max-width: 90%;
   }
   
-  .profile-card h2 {
-    font-size: 22px;
+  .dashboard-header h2 {
+    font-size: 20px;
   }
   
   .button-group {
@@ -375,23 +322,6 @@ export default {
   
   .action-btn {
     width: 100%;
-  }
-  
-  /* Even more compact navbar on mobile */
-  .page-container :deep(.us-nav),
-  .page-container :deep(nav),
-  .page-container :deep(.navbar) {
-    max-width: 90% !important;
-    padding: 6px 15px !important;
-    min-height: 40px !important;
-    max-height: 50px !important;
-  }
-  
-  .page-container :deep(.us-nav *),
-  .page-container :deep(nav *),
-  .page-container :deep(.navbar *) {
-    font-size: 13px !important;
-    padding: 4px 8px !important;
   }
 }
 </style>

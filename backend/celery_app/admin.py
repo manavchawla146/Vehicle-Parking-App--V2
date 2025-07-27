@@ -3,6 +3,7 @@ from .models import db, ParkingLot, User, ParkingSpot, LotChangeLog
 from datetime import datetime, timezone
 import logging
 from sqlalchemy import func
+from . import cache
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -11,7 +12,58 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
 def get_current_time():
     """Get current time with proper timezone handling"""
-    return datetime.now(timezone.utc)
+    return datetime.now()
+
+def invalidate_lots_cache():
+    """Invalidate all lots-related cache"""
+    try:
+        cache.delete('admin_lots')
+        cache.delete('admin_lots_summary')
+        logger.info("✅ Lots cache invalidated")
+    except Exception as e:
+        logger.error(f"❌ Failed to invalidate lots cache: {e}")
+
+def invalidate_users_cache():
+    """Invalidate all users-related cache"""
+    try:
+        cache.delete('admin_users')
+        logger.info("✅ Users cache invalidated")
+    except Exception as e:
+        logger.error(f"❌ Failed to invalidate users cache: {e}")
+
+@admin_bp.route('/cache/clear', methods=['POST'])
+def clear_cache():
+    """Clear all cache - admin only"""
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        # Clear all cache keys
+        cache.clear()
+        logger.info("🗑️ All cache cleared by admin")
+        return jsonify({'message': 'Cache cleared successfully'}), 200
+    except Exception as e:
+        logger.error(f"❌ Failed to clear cache: {e}")
+        return jsonify({'error': 'Failed to clear cache'}), 500
+
+@admin_bp.route('/cache/status', methods=['GET'])
+def get_cache_status():
+    """Get cache status - admin only"""
+    if session.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        # Get cache info (this is a simplified version)
+        status = {
+            'cache_type': 'redis',
+            'cache_url': 'redis://localhost:6379/1',
+            'default_timeout': 300,
+            'status': 'active'
+        }
+        return jsonify(status), 200
+    except Exception as e:
+        logger.error(f"❌ Failed to get cache status: {e}")
+        return jsonify({'error': 'Failed to get cache status'}), 500
 
 @admin_bp.route('/lots', methods=['POST'])
 def add_lot():
@@ -39,6 +91,9 @@ def add_lot():
         db.session.commit()
         logger.info(f"Successfully added lot {lot.id} with {data['maxSpots']} spots")
         
+        # Invalidate cache after adding new lot
+        invalidate_lots_cache()
+        
         # Send email notification to all users about the new lot using Celery task with 5-minute delay
         try:
             from jobs.reports import send_lot_addition_notification
@@ -61,7 +116,9 @@ def add_lot():
         return jsonify({'error': f'Internal server error: {e}'}), 500
 
 @admin_bp.route('/lots', methods=['GET'])
+@cache.cached(timeout=300, key_prefix='admin_lots')
 def get_lots():
+    """Get all parking lots with caching"""
     lots = ParkingLot.query.all()
     result = []
     for lot in lots:
@@ -74,10 +131,10 @@ def get_lots():
             'pinCode': lot.pin_code,
             'pricePerHour': lot.price,
             'total': total,
-            'available': total - occupied,
             'occupied': occupied,
-            'createdAt': lot.created_at.isoformat(),
+            'available': total - occupied
         })
+    logger.info(f"📊 Fetched {len(result)} lots from cache/database")
     return jsonify(result)
 
 @admin_bp.route('/lots/<int:lot_id>', methods=['DELETE'])
@@ -88,7 +145,7 @@ def delete_lot(lot_id):
     lot = ParkingLot.query.get_or_404(lot_id)
     if any(spot.status == 'O' for spot in lot.spots):
         return jsonify({'error': 'Cannot delete lot with occupied slots'}), 400
-    
+
     # Store lot data before deletion for notification
     lot_data = {
         'primeLocation': lot.prime_location_name,
@@ -97,18 +154,21 @@ def delete_lot(lot_id):
         'pricePerHour': lot.price,
         'maxSpots': lot.number_of_spots
     }
-    
+
     # Send email notification to all users about the lot deletion using Celery task with 5-minute delay
     try:
         from jobs.reports import send_lot_deletion_notification
-        # Schedule the task to run after 5 minutes (300 seconds)
         send_lot_deletion_notification.apply_async(args=[lot_data], countdown=60)
         logger.info("📧 Lot deletion notification task scheduled for 5 minutes from now")
     except Exception as e:
         logger.error(f"❌ Failed to schedule lot deletion notification: {e}")
-    
+
     db.session.delete(lot)
     db.session.commit()
+    
+    # Invalidate cache after deleting lot
+    invalidate_lots_cache()
+    
     return jsonify({'message': 'Lot deleted successfully'}), 200
 
 @admin_bp.route('/lots/<int:lot_id>/slots', methods=['POST'])
@@ -230,51 +290,116 @@ def update_lot(lot_id):
     }), 200
 
 @admin_bp.route('/lots/<int:lot_id>/slots', methods=['GET'])
+@cache.cached(timeout=120, key_prefix='admin_lot_slots')
 def get_lot_slots(lot_id):
-    slots = ParkingSpot.query.filter_by(lot_id=lot_id).order_by(ParkingSpot.slot_number).all()
-    return jsonify([
-        {
-            "slot_number": slot.slot_number,
-            "status": slot.status,
-            "vehicle_id": slot.vehicle_id,
-            "username": slot.username
-        }
-        for slot in slots
-    ])
+    """Get slots for a specific lot with caching"""
+    lot = ParkingLot.query.get_or_404(lot_id)
+    spots = ParkingSpot.query.filter_by(lot_id=lot_id).all()
+    result = [{
+        'slot_number': spot.slot_number,
+        'status': spot.status,
+        'vehicle_id': spot.vehicle_id,
+        'occupation_time': spot.occupation_time.isoformat() if spot.occupation_time else None,
+        'username': spot.username
+    } for spot in spots]
+    logger.info(f"📊 Fetched {len(result)} slots for lot {lot_id} from cache/database")
+    return jsonify(result)
 
 @admin_bp.route('/users', methods=['GET'])
+@cache.cached(timeout=600, key_prefix='admin_users')
 def get_users():
-    if session.get('role') != 'admin':
-        return jsonify({'error': 'Unauthorized'}), 403
-    users = User.query.all()
-    print(f"Users fetched: {[user.username for user in users]}")
-    return jsonify([
-        {
-            'id': user.id,
-            'name': user.username,
-            'email': user.email,
-            'status': 'Active' if not user.banned else 'Banned'
-        }
-        for user in users
-    ])
+    """Get all users with caching"""
+    users = User.query.filter(User.role != 'admin').all()
+    result = [{
+        'id': user.id,
+        'name': user.username,
+        'email': user.email,
+        'address': user.address,
+        'pincode': user.pincode,
+        'banned': user.banned
+    } for user in users]
+    logger.info(f"📊 Fetched {len(result)} users from cache/database")
+    return jsonify(result)
 
 @admin_bp.route('/users/<int:user_id>/ban', methods=['POST'])
 def ban_user(user_id):
     if session.get('role') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
+
     user = User.query.get_or_404(user_id)
     user.banned = True
     db.session.commit()
-    return jsonify({'message': 'User banned successfully', 'status': 'Banned'})
+    
+    # Invalidate users cache after banning
+    invalidate_users_cache()
+    
+    return jsonify({'message': 'User banned successfully'}), 200
 
 @admin_bp.route('/users/<int:user_id>/unban', methods=['POST'])
 def unban_user(user_id):
     if session.get('role') != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
+
     user = User.query.get_or_404(user_id)
     user.banned = False
     db.session.commit()
-    return jsonify({'message': 'User unbanned successfully', 'status': 'Active'})
+    
+    # Invalidate users cache after unbanning
+    invalidate_users_cache()
+    
+    return jsonify({'message': 'User unbanned successfully'}), 200
+
+@admin_bp.route('/summary', methods=['GET'])
+@cache.cached(timeout=180, key_prefix='admin_summary')
+def get_admin_summary():
+    """Get admin summary data with caching"""
+    try:
+        # Get lots data
+        lots = ParkingLot.query.all()
+        lot_data = []
+        total_occupied = 0
+        total_spots = 0
+        
+        for lot in lots:
+            occupied = ParkingSpot.query.filter_by(lot_id=lot.id, status='O').count()
+            total = ParkingSpot.query.filter_by(lot_id=lot.id).count()
+            total_occupied += occupied
+            total_spots += total
+            
+            lot_data.append({
+                'name': lot.prime_location_name,
+                'occupied': occupied,
+                'total': total
+            })
+        
+        # Get daily occupancy trend (last 7 days)
+        from datetime import timedelta
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=7)
+        
+        # This is a simplified version - you might want to add actual usage tracking
+        daily_trend = []
+        for i in range(7):
+            date = start_date + timedelta(days=i)
+            daily_trend.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'occupancy': total_occupied  # Simplified - should be actual daily data
+            })
+        
+        summary = {
+            'lots': lot_data,
+            'total_occupied': total_occupied,
+            'total_spots': total_spots,
+            'utilization_rate': (total_occupied / total_spots * 100) if total_spots > 0 else 0,
+            'daily_trend': daily_trend
+        }
+        
+        logger.info(f"📊 Generated admin summary from cache/database")
+        return jsonify(summary)
+        
+    except Exception as e:
+        logger.error(f"Error generating admin summary: {e}")
+        return jsonify({'error': 'Failed to generate summary'}), 500
 
 @admin_bp.route('/occupancy-trend', methods=['GET'])
 def occupancy_trend():

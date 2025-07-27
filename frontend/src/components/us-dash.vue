@@ -11,7 +11,7 @@
         <div class="card">
           <div class="gradient-header">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-              <button class="notification-btn" @click="showNotificationModal = true">
+              <button class="notification-btn" @click="openNotificationModal">
                 <i class="fas fa-bell"></i>
                 <span v-if="unreadNotifications > 0" class="notification-badge">{{ unreadNotifications }}</span>
               </button>
@@ -173,7 +173,7 @@
       </div>
 
       <!-- Notification Modal -->
-      <div v-if="showNotificationModal" class="modal-overlay" @click.self="showNotificationModal = false">
+      <div v-if="showNotificationModal" class="modal-overlay" @click.self="closeNotificationModal">
         <div class="modal-content">
           <div class="modal-header">
             <h3>Notifications</h3>
@@ -188,7 +188,7 @@
             </ul>
           </div>
           <div class="button-group">
-            <button class="action-btn modal-cancel-btn" @click="showNotificationModal = false">Close</button>
+            <button class="action-btn modal-cancel-btn" @click="closeNotificationModal">Close</button>
           </div>
         </div>
       </div>
@@ -468,7 +468,7 @@ export default {
         h.id,
         h.location,
         h.vehicle_no,
-        h.timestamp ? new Date(h.timestamp).toLocaleString() : '',
+        h.timestamp ? new Date(h.timestamp + 'Z').toLocaleString() : '',
         h.type === 'parked_out' ? 'Parked Out' : 'Reserved'
       ]);
       let csvContent = headers.join(',') + '\n' + rows.map(e => e.join(',')).join('\n');
@@ -493,6 +493,11 @@ export default {
           const data = await response.json();
           this.notifications = data.notifications || [];
           this.unreadNotifications = data.unread_count || 0;
+          
+          // If user has seen notifications, mark them as read
+          if (this.notifications.length > 0 && this.unreadNotifications > 0) {
+            // Don't automatically mark as read, let user see them first
+          }
         } else {
           console.error('Failed to fetch notifications:', response.statusText);
           this.notifications = [];
@@ -505,6 +510,16 @@ export default {
       }
     },
     
+    openNotificationModal() {
+      this.showNotificationModal = true;
+      this.markNotificationsAsRead();
+    },
+    
+    closeNotificationModal() {
+      this.showNotificationModal = false;
+      this.markNotificationsAsRead();
+    },
+    
     markNotificationsAsRead() {
       this.notifications.forEach(notification => {
         notification.read = true;
@@ -515,7 +530,7 @@ export default {
     formatNotificationTime(timestamp) {
       if (!timestamp) return '';
       try {
-        const date = new Date(timestamp);
+        const date = new Date(timestamp + 'Z');
         const now = new Date();
         const diffMs = now - date;
         const diffHours = Math.floor(diffMs / (1000 * 60 * 60));

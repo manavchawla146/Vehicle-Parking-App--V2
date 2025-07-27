@@ -32,7 +32,7 @@ class ParkingLot(db.Model):
     address = db.Column(db.String(255), nullable=False)
     pin_code = db.Column(db.String(10), nullable=False)
     number_of_spots = db.Column(db.Integer, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     spots = relationship('ParkingSpot', backref='lot', lazy=True, cascade="all, delete-orphan")
@@ -66,7 +66,7 @@ class Reservation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     spot_id = db.Column(db.Integer, db.ForeignKey('parking_spot.id'), nullable=False)
-    parking_timestamp = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    parking_timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     leaving_timestamp = db.Column(db.DateTime, nullable=True)
     parking_cost = db.Column(db.Float, nullable=True)
     remarks = db.Column(db.String(255), nullable=True)
@@ -78,7 +78,7 @@ class ExportTask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     status = db.Column(db.String(20), default='pending')
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = db.Column(db.DateTime, nullable=True)
     download_link = db.Column(db.String(255), nullable=True)
 
@@ -89,7 +89,7 @@ class ReminderLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     reminder_type = db.Column(db.String(50))  # daily, monthly
-    sent_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    sent_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class ParkingUsageLog(db.Model):
@@ -118,5 +118,5 @@ class LotChangeLog(db.Model):
     lot_pin_code = db.Column(db.String(10), nullable=False)
     number_of_spots = db.Column(db.Integer, nullable=False)
     price_per_hour = db.Column(db.Float, nullable=False)
-    changed_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    changed_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     changed_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # admin who made the change

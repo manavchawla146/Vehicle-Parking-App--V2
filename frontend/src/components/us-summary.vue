@@ -241,7 +241,7 @@ export default {
       // Count parking sessions per month
       this.parkingHistory.forEach(item => {
         if (item.timestamp) {
-          const date = new Date(item.timestamp);
+          const date = new Date(item.timestamp + 'Z');
           const monthKey = date.toLocaleString('default', { month: 'short', year: '2-digit' });
           if (monthlyUsage.hasOwnProperty(monthKey)) {
             monthlyUsage[monthKey]++;

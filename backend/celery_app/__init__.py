@@ -4,9 +4,11 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_migrate import Migrate
+from flask_caching import Cache
 
 db = SQLAlchemy()
 migrate = Migrate()
+cache = Cache()
 
 def create_app():
     app = Flask(__name__)
@@ -14,6 +16,7 @@ def create_app():
     CORS(app, supports_credentials=True)
     db.init_app(app)
     migrate.init_app(app, db)
+    cache.init_app(app)
     from .auth import auth_bp
     app.register_blueprint(auth_bp)
     from .user import user_bp

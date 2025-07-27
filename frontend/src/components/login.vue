@@ -1,44 +1,42 @@
 <template>
-  <div class="page-container">
-    <div class="container">
-      <div class="form-box">
-        <h2><i class="fas fa-parking"></i> User Login</h2>
-        <form @submit.prevent="handleLogin">
-          <div class="form-group">
-            <label for="email">Registered Email ID</label>
-            <input
-              type="email"
-              id="email"
-              v-model="email"
-              class="input-field"
-              required
-            />
-            <p v-if="errors.email" class="error-text">{{ errors.email }}</p>
-          </div>
-          <div class="form-group">
-            <label for="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              v-model="password"
-              class="input-field"
-              required
-            />
-            <p v-if="errors.password" class="error-text">{{ errors.password }}</p>
-          </div>
-          <button type="submit" class="submit-btn">Login</button>
-        </form>
-        <p class="redirect-text">
-          Create Account?
-          <router-link to="/signup" class="redirect-link">Sign Up</router-link>
-        </p>
-      </div>
-      <div v-if="showBannedModal" class="modal-overlay">
-        <div class="modal-content">
-          <h3>You are banned</h3>
-          <p>Your account has been banned. Please contact the administrator.</p>
-          <button @click="showBannedModal = false">Close</button>
+  <div class="login-container">
+    <div class="form-box">
+      <h2><i class="fas fa-parking"></i> User Login</h2>
+      <form @submit.prevent="handleLogin">
+        <div class="form-group">
+          <label for="email">Registered Email ID</label>
+          <input
+            type="email"
+            id="email"
+            v-model="email"
+            class="input-field"
+            required
+          />
+          <p v-if="errors.email" class="error-text">{{ errors.email }}</p>
         </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            v-model="password"
+            class="input-field"
+            required
+          />
+          <p v-if="errors.password" class="error-text">{{ errors.password }}</p>
+        </div>
+        <button type="submit" class="submit-btn">Login</button>
+      </form>
+      <p class="redirect-text">
+        Create Account?
+        <router-link to="/signup" class="redirect-link">Sign Up</router-link>
+      </p>
+    </div>
+    <div v-if="showBannedModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3>You are banned</h3>
+        <p>Your account has been banned. Please contact the administrator.</p>
+        <button @click="showBannedModal = false">Close</button>
       </div>
     </div>
   </div>
@@ -126,18 +124,13 @@ export default {
 };
 </script>
 
-<style>
-.page-container {
+<style scoped>
+.login-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #f0f4f8 0%, #d9e4f5 100%);
-}
-
-.container {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100vh - 60px);
-  padding-top: 60px;
 }
 
 .form-box {
@@ -172,7 +165,7 @@ export default {
   font-size: 15px;
   font-family: 'Roboto', sans-serif;
   font-weight: 500;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
   color: #e0f7fa;
 }
 

@@ -1,72 +1,69 @@
 <template>
-  <div class="page-container">
-    
-    <div class="container">
-      <div class="form-box">
-        <h2><i class="fas fa-parking"></i> User Signup</h2>
-        <form @submit.prevent="handleSignup">
-          <div class="form-group">
-            <label for="email">Email ID/Username</label>
-            <input
-              type="text"
-              id="email"
-              v-model="email"
-              class="input-field"
-              required
-            />
-            <p v-if="errors.email" class="error-text">{{ errors.email }}</p>
-          </div>
-          <div class="form-group">
-            <label for="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              v-model="password"
-              class="input-field"
-              required
-            />
-            <p v-if="errors.password" class="error-text">{{ errors.password }}</p>
-          </div>
-          <div class="form-group">
-            <label for="fullname">Fullname</label>
-            <input
-              type="text"
-              id="fullname"
-              v-model="fullname"
-              class="input-field"
-              required
-            />
-            <p v-if="errors.fullname" class="error-text">{{ errors.fullname }}</p>
-          </div>
-          <div class="form-group">
-            <label for="address">Address</label>
-            <input
-              type="text"
-              id="address"
-              v-model="address"
-              class="input-field"
-              required
-            />
-            <p v-if="errors.address" class="error-text">{{ errors.address }}</p>
-          </div>
-          <div class="form-group">
-            <label for="pincode">Pin Code</label>
-            <input
-              type="text"
-              id="pincode"
-              v-model="pincode"
-              class="input-field"
-              required
-            />
-            <p v-if="errors.pincode" class="error-text">{{ errors.pincode }}</p>
-          </div>
-          <button type="submit" class="submit-btn">Register</button>
-        </form>
-        <p class="redirect-text">
-          Already have an account?
-          <router-link to="/login" class="redirect-link">Login here</router-link>
-        </p>
-      </div>
+  <div class="signup-container">
+    <div class="form-box">
+      <h2><i class="fas fa-parking"></i> User Signup</h2>
+      <form @submit.prevent="handleSignup">
+        <div class="form-group">
+          <label for="email">Email ID/Username</label>
+          <input
+            type="email"
+            id="email"
+            v-model="email"
+            class="input-field"
+            required
+          />
+          <p v-if="errors.email" class="error-text">{{ errors.email }}</p>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            v-model="password"
+            class="input-field"
+            required
+          />
+          <p v-if="errors.password" class="error-text">{{ errors.password }}</p>
+        </div>
+        <div class="form-group">
+          <label for="fullname">Fullname</label>
+          <input
+            type="text"
+            id="fullname"
+            v-model="fullname"
+            class="input-field"
+            required
+          />
+          <p v-if="errors.fullname" class="error-text">{{ errors.fullname }}</p>
+        </div>
+        <div class="form-group">
+          <label for="address">Address</label>
+          <input
+            type="text"
+            id="address"
+            v-model="address"
+            class="input-field"
+            required
+          />
+          <p v-if="errors.address" class="error-text">{{ errors.address }}</p>
+        </div>
+        <div class="form-group">
+          <label for="pincode">Pin Code</label>
+          <input
+            type="text"
+            id="pincode"
+            v-model="pincode"
+            class="input-field"
+            required
+          />
+          <p v-if="errors.pincode" class="error-text">{{ errors.pincode }}</p>
+        </div>
+        <button type="submit" class="submit-btn">Register</button>
+      </form>
+      <p class="redirect-text">
+        Already have an account?
+        <router-link to="/login" class="redirect-link">Login here</router-link>
+      </p>
     </div>
   </div>
 </template>
@@ -168,17 +165,12 @@ export default {
 </script>
 
 <style>
-.page-container {
+.signup-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #f0f4f8 0%, #d9e4f5 100%);
-}
-
-.container {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100vh - 60px); /* Adjust for navbar height */
-  padding-top: 60px;
 }
 
 .form-box {
