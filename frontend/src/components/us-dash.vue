@@ -9,8 +9,15 @@
         <div class="card">
           <div class="gradient-header">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-              <h3>Recent parking history</h3>
-              <button class="action-btn" @click="exportParkingHistory">Export</button>
+              <button class="notification-btn" @click="showNotificationModal = true">
+                <i class="fas fa-bell"></i>
+                <span v-if="unreadNotifications > 0" class="notification-badge">{{ unreadNotifications }}</span>
+              </button>
+              <h3 style="margin: 0; flex-grow: 1; text-align: center;">Recent parking history</h3>
+              <div style="display: flex; gap: 10px;">
+                <button class="action-btn" @click="generatePdfReport" style="background-color: #ff6b35;">Generate PDF</button>
+                <button class="action-btn" @click="exportParkingHistory">Export</button>
+              </div>
             </div>
           </div>
           <div class="history-box">
@@ -163,6 +170,27 @@
           </div>
         </div>
       </div>
+
+      <!-- Notification Modal -->
+      <div v-if="showNotificationModal" class="modal-overlay" @click.self="showNotificationModal = false">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Notifications</h3>
+          </div>
+          <div class="modal-body">
+            <div v-if="notifications.length === 0" class="no-notifications">No new notifications.</div>
+            <ul v-else class="notification-list">
+              <li v-for="(notification, index) in notifications" :key="index" class="notification-item">
+                <div class="notification-message">{{ notification.message }}</div>
+                <div class="notification-timestamp">{{ formatNotificationTime(notification.timestamp) }}</div>
+              </li>
+            </ul>
+          </div>
+          <div class="button-group">
+            <button class="action-btn modal-cancel-btn" @click="showNotificationModal = false">Close</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -188,7 +216,10 @@ export default {
       selectedLot: null,
       userProfile: null,
       showModal: false, // boolean for modal visibility
-      slots: []
+      slots: [],
+      showNotificationModal: false,
+      notifications: [], // New property for notifications
+      unreadNotifications: 0 // New property for unread notifications
     };
   },
   computed: {
@@ -447,12 +478,96 @@ export default {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    },
+    
+    // Notification methods
+    async fetchNotifications() {
+      try {
+        const response = await fetch('/api/user/notifications', {
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          this.notifications = data.notifications || [];
+          this.unreadNotifications = data.unread_count || 0;
+        } else {
+          console.error('Failed to fetch notifications:', response.statusText);
+          this.notifications = [];
+          this.unreadNotifications = 0;
+        }
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+        this.notifications = [];
+        this.unreadNotifications = 0;
+      }
+    },
+    
+    markNotificationsAsRead() {
+      this.notifications.forEach(notification => {
+        notification.read = true;
+      });
+      this.unreadNotifications = 0;
+    },
+    
+    formatNotificationTime(timestamp) {
+      if (!timestamp) return '';
+      try {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        if (diffDays > 0) {
+          return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+        } else if (diffHours > 0) {
+          return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+        } else {
+          return 'Just now';
+        }
+      } catch (error) {
+        return timestamp; // Return original timestamp if parsing fails
+      }
+    },
+
+    async generatePdfReport() {
+      try {
+        const response = await fetch('/api/user/generate-pdf-report', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'parking_report.pdf';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          alert('PDF report generated successfully!');
+        } else {
+          const errorData = await response.json();
+          alert(`Failed to generate PDF report: ${errorData.error || response.statusText}`);
+        }
+      } catch (error) {
+        console.error('Error generating PDF report:', error);
+        alert('Network error generating PDF report!');
+      }
     }
   },
   created() {
     this.fetchParkingLots();
     this.fetchUserProfile();
     this.fetchUserParkingHistory();
+    this.fetchNotifications(); // Fetch notifications on component creation
   }
 };
 </script>
@@ -498,5 +613,105 @@ export default {
 }
 .export-btn:hover {
   background-color: #1769aa;
+}
+
+/* Notification styles */
+.notification-btn {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 18px;
+  cursor: pointer;
+  position: relative;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.3s ease;
+}
+
+.notification-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.notification-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: #ff4444;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+/* Notification Modal styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 2px solid #26a69a;
+  padding-bottom: 10px;
+}
+
+.no-notifications {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 20px;
+}
+
+.modal-content ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.modal-content li {
+  padding: 15px 0;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.modal-content li:last-child {
+  border-bottom: none;
+}
+
+.notification-timestamp {
+  font-size: 12px;
+  color: #999;
+  font-style: italic;
+}
+
+.modal-actions {
+  margin-top: 20px;
+  text-align: center;
 }
 </style>

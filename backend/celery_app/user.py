@@ -166,6 +166,22 @@ def get_user_parking_history():
     # Combine and return
     return jsonify(active_rows + parked_out_rows)
 
+@user_bp.route('/user/parking-status-summary', methods=['GET'])
+def get_user_parking_status_summary():
+    user_id = session.get('user_id')
+    if not user_id or user_id == 'admin':
+        return jsonify({'error': 'Not logged in or admin'}), 401
+
+    # Count active reservations (not yet released)
+    active_count = Reservation.query.filter_by(user_id=user_id, leaving_timestamp=None).count()
+    # Count completed sessions (from ParkingUsageLog)
+    completed_count = ParkingUsageLog.query.filter_by(user_id=user_id).count()
+
+    return jsonify({
+        'active': active_count,
+        'completed': completed_count
+    })
+
 @user_bp.route('/parking/release', methods=['POST'])
 def release_parking():
     user_id = session.get('user_id')
@@ -231,3 +247,174 @@ def release_parking():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to release parking spot'}), 500
+
+@user_bp.route('/user/notifications', methods=['GET'])
+def get_user_notifications():
+    user_id = session.get('user_id')
+    if not user_id or user_id == 'admin':
+        return jsonify({'error': 'Not logged in or admin'}), 401
+    
+    try:
+        from datetime import datetime, timedelta
+        
+        # Get current time
+        now = datetime.now()
+        
+        # Get all parking lots
+        all_lots = ParkingLot.query.all()
+        
+        # Get user's recent parking history (last 30 days)
+        thirty_days_ago = now - timedelta(days=30)
+        recent_usage = ParkingUsageLog.query.filter(
+            ParkingUsageLog.user_id == user_id,
+            ParkingUsageLog.entry_time >= thirty_days_ago
+        ).all()
+        
+        # Get all parking spots the user has ever used
+        all_user_spots = ParkingUsageLog.query.filter_by(user_id=user_id).all()
+        
+        notifications = []
+        
+        # Check for unused lots recently
+        used_lot_ids = set()
+        for usage in recent_usage:
+            spot = ParkingSpot.query.get(usage.spot_id)
+            if spot:
+                used_lot_ids.add(spot.lot_id)
+        
+        # Find lots the user hasn't used recently
+        for lot in all_lots:
+            if lot.id not in used_lot_ids:
+                # Check if user has ever used this lot
+                lot_ever_used = any(
+                    ParkingSpot.query.get(usage.spot_id).lot_id == lot.id 
+                    for usage in all_user_spots 
+                    if ParkingSpot.query.get(usage.spot_id)
+                )
+                
+                if lot_ever_used:
+                    # User has used this lot before but not recently
+                    last_usage = None
+                    for usage in all_user_spots:
+                        spot = ParkingSpot.query.get(usage.spot_id)
+                        if spot and spot.lot_id == lot.id:
+                            if not last_usage or usage.entry_time > last_usage.entry_time:
+                                last_usage = usage.entry_time
+                    
+                    if last_usage:
+                        days_since_last_use = (now - last_usage).days
+                        if days_since_last_use > 7:  # More than a week
+                            notifications.append({
+                                'type': 'unused_lot',
+                                'message': f"You haven't used parking lot '{lot.prime_location_name}' for {days_since_last_use} days. Consider trying it again!",
+                                'timestamp': last_usage.strftime('%Y-%m-%d %H:%M:%S'),
+                                'lot_id': lot.id,
+                                'lot_name': lot.prime_location_name,
+                                'days_since_use': days_since_last_use,
+                                'read': False
+                            })
+        
+        # Check for long parking sessions (more than 2 hours)
+        active_reservations = Reservation.query.filter_by(
+            user_id=user_id, 
+            leaving_timestamp=None
+        ).all()
+        
+        for reservation in active_reservations:
+            if reservation.parking_timestamp:
+                duration = now - reservation.parking_timestamp
+                hours_parked = duration.total_seconds() / 3600
+                
+                if hours_parked > 2:
+                    spot = ParkingSpot.query.get(reservation.spot_id)
+                    lot_name = "Unknown Lot"
+                    if spot:
+                        lot = ParkingLot.query.get(spot.lot_id)
+                        if lot:
+                            lot_name = lot.prime_location_name
+                    
+                    notifications.append({
+                        'type': 'long_session',
+                        'message': f"Your parking session at '{lot_name}' has been active for {hours_parked:.1f} hours",
+                        'timestamp': reservation.parking_timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                        'hours_parked': hours_parked,
+                        'read': False
+                    })
+        
+        # Sort notifications by timestamp (newest first)
+        notifications.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        return jsonify({
+            'notifications': notifications,
+            'unread_count': len([n for n in notifications if not n.get('read', False)])
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching notifications: {e}")
+        return jsonify({'error': 'Failed to fetch notifications'}), 500
+
+@user_bp.route('/user/generate-pdf-report', methods=['POST'])
+def generate_pdf_report():
+    user_id = session.get('user_id')
+    if not user_id or user_id == 'admin':
+        return jsonify({'error': 'Not logged in or admin'}), 401
+    
+    try:
+        logger.info("Starting PDF report generation...")
+        
+        # Import the report function
+        try:
+            from jobs.reports import generate_monthly_report
+        except ImportError as e:
+            logger.error(f"Import error: {e}")
+            return jsonify({'error': f'Import error: {e}'}), 500
+        
+        import os
+        
+        # Generate the PDF report
+        logger.info("Calling generate_monthly_report...")
+        pdf_path = generate_monthly_report()
+        logger.info(f"PDF path returned: {pdf_path}")
+        
+        if not pdf_path:
+            logger.error("No PDF path returned from generate_monthly_report")
+            return jsonify({'error': 'No PDF path returned from report generation'}), 500
+        
+        if not os.path.exists(pdf_path):
+            logger.error(f"PDF file does not exist at path: {pdf_path}")
+            return jsonify({'error': f'PDF file not found at {pdf_path}'}), 500
+        
+        # Read the PDF file
+        logger.info("Reading PDF file...")
+        with open(pdf_path, 'rb') as pdf_file:
+            pdf_content = pdf_file.read()
+        
+        logger.info(f"PDF file size: {len(pdf_content)} bytes")
+        
+        # Clean up the temporary file
+        try:
+            os.unlink(pdf_path)
+            logger.info("Temporary PDF file cleaned up")
+        except Exception as cleanup_error:
+            logger.warning(f"Failed to cleanup temporary file: {cleanup_error}")
+        
+        # Return the PDF as a download
+        from flask import send_file
+        import io
+        
+        pdf_io = io.BytesIO(pdf_content)
+        pdf_io.seek(0)
+        
+        logger.info("Sending PDF file to client...")
+        return send_file(
+            pdf_io,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'parking_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+        )
+        
+    except Exception as e:
+        logger.error(f"Error generating PDF report: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({'error': f'Failed to generate PDF report: {str(e)}'}), 500

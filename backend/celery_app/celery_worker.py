@@ -8,15 +8,14 @@ celery = Celery(
     broker='redis://localhost:6379/0',
     backend='redis://localhost:6379/0',
     include=[
-        'jobs.reminders',  #  This registers your task file
+        'jobs.reminders',
         'jobs.reports'
     ]
 )
 
-# 👇 Optional, or load from config file
 celery.conf.beat_schedule = {
     'daily-reminder-task': {
-        'task': 'jobs.reminders.send_reminder',
-        'schedule': crontab(minute='*/1'),  # For testing every 1 min
+        'task': 'jobs.reminders.send_reminder',  # Just prints log
+        'schedule': crontab(hour=22, minute=10),  # 10:10 PM
     },
 }

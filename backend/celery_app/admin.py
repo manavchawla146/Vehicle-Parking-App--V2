@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify, session
-from .models import db, ParkingLot, User, ParkingSpot
+from .models import db, ParkingLot, User, ParkingSpot, LotChangeLog
 from datetime import datetime, timezone
 import logging
+from sqlalchemy import func
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -245,3 +246,45 @@ def unban_user(user_id):
     user.banned = False
     db.session.commit()
     return jsonify({'message': 'User unbanned successfully', 'status': 'Active'})
+
+@admin_bp.route('/occupancy-trend', methods=['GET'])
+def occupancy_trend():
+    try:
+        # Get the last 7 days
+        from datetime import datetime, timedelta
+        today = datetime.now().date()
+        days = [(today - timedelta(days=i)) for i in range(6, -1, -1)]
+        days_str = [d.strftime('%Y-%m-%d') for d in days]
+
+        # Query Reservation table for each day (bookings, not releases)
+        from .models import Reservation
+        result = {d: 0 for d in days_str}
+        
+        logger.info(f"Querying reservations for dates: {days_str}")
+        
+        reservations = db.session.query(
+            func.date(Reservation.parking_timestamp).label('date'),
+            func.count(Reservation.id).label('count')
+        ).filter(
+            Reservation.parking_timestamp >= days[0],
+            Reservation.parking_timestamp < today + timedelta(days=1)
+        ).group_by(func.date(Reservation.parking_timestamp)).all()
+        
+        logger.info(f"Found reservations: {reservations}")
+        
+        for row in reservations:
+            date_str = row.date.strftime('%Y-%m-%d')
+            if date_str in result:
+                result[date_str] = row.count
+        
+        response_data = {
+            'dates': days_str,
+            'occupied_counts': [result[d] for d in days_str]
+        }
+        
+        logger.info(f"Returning trend data: {response_data}")
+        return jsonify(response_data)
+        
+    except Exception as e:
+        logger.error(f"Error in occupancy-trend endpoint: {e}")
+        return jsonify({'error': str(e)}), 500

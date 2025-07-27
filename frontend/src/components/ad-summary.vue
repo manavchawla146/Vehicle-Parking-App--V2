@@ -36,101 +36,204 @@ export default {
       chart1: null,
       chart2: null,
       chart3: null,
+      loading: true,
+      error: null,
     };
   },
-  mounted() {
-    // Initialize Bar Chart: Occupancy by Parking Lot
-    this.chart1 = new Chart(document.getElementById('chart1'), {
-      type: 'bar',
-      data: {
-        labels: ["Parking #1", "Parking #2"],
-        datasets: [{
-          label: "Occupied Spots",
-          data: [3, 4],
-          backgroundColor: ["#4dd0e1", "#81c784"],
-          borderColor: ["#26a69a", "#66bb6a"],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: "Number of Spots"
-            }
-          }
-        },
-        plugins: {
-          legend: {
-            labels: {
-              color: "#333"
-            }
-          }
-        },
-        maintainAspectRatio: false
-      }
-    });
+  async mounted() {
+    try {
+      // Fetch lots data
+      const lotsRes = await fetch('/api/admin/lots');
+      const lots = await lotsRes.json();
+      // Prepare data for charts 1 and 2
+      const lotLabels = lots.map(lot => lot.primeLocation);
+      const occupiedData = lots.map(lot => lot.occupied);
+      const available = lots.reduce((sum, lot) => sum + lot.available, 0);
+      const occupied = lots.reduce((sum, lot) => sum + lot.occupied, 0);
 
-    // Initialize Pie Chart: Overall Parking Utilization
-    this.chart2 = new Chart(document.getElementById('chart2'), {
-      type: 'pie',
-      data: {
-        labels: ["Occupied", "Available"],
-        datasets: [{
-          data: [7, 18],
-          backgroundColor: ["#ef5350", "#4dd0e1"],
-          borderColor: ["#e57373", "#26a69a"],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        plugins: {
-          legend: {
-            labels: {
-              color: "#333"
-            }
-          }
+      // Chart 1: Occupancy by Parking Lot
+      this.chart1 = new Chart(document.getElementById('chart1'), {
+        type: 'bar',
+        data: {
+          labels: lotLabels,
+          datasets: [{
+            label: 'Occupied Spots',
+            data: occupiedData,
+            backgroundColor: ["#4dd0e1", "#81c784", "#ef5350", "#ffd54f", "#9575cd", "#ffb74d"],
+            borderColor: ["#26a69a", "#66bb6a", "#e57373", "#ffb300", "#7e57c2", "#ffa726"],
+            borderWidth: 1
+          }]
         },
-        maintainAspectRatio: false
-      }
-    });
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Number of Spots'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#333'
+              }
+            }
+          },
+          maintainAspectRatio: false
+        }
+      });
 
-    // Initialize Line Chart: Daily Occupancy Trend
-    this.chart3 = new Chart(document.getElementById('chart3'), {
-      type: 'line',
-      data: {
-        labels: ["June 18", "June 19", "June 20"],
-        datasets: [{
-          label: "Occupied Spots",
-          data: [5, 6, 7],
-          fill: false,
-          borderColor: "#ef5350",
-          tension: 0.1,
-          pointBackgroundColor: "#e57373"
-        }]
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: "Number of Spots"
-            }
-          }
+      // Chart 2: Overall Parking Utilization
+      this.chart2 = new Chart(document.getElementById('chart2'), {
+        type: 'pie',
+        data: {
+          labels: ['Occupied', 'Available'],
+          datasets: [{
+            data: [occupied, available],
+            backgroundColor: ["#ef5350", "#4dd0e1"],
+            borderColor: ["#e57373", "#26a69a"],
+            borderWidth: 1
+          }]
         },
-        plugins: {
-          legend: {
-            labels: {
-              color: "#333"
+        options: {
+          plugins: {
+            legend: {
+              labels: {
+                color: '#333'
+              }
             }
+          },
+          maintainAspectRatio: false
+        }
+      });
+
+      // Fetch occupancy trend data
+      try {
+        const trendRes = await fetch('/api/admin/occupancy-trend');
+        if (!trendRes.ok) {
+          throw new Error(`HTTP error! status: ${trendRes.status}`);
+        }
+        const trend = await trendRes.json();
+        
+        // Ensure we have valid data for the trend chart
+        const trendDates = trend.dates || [];
+        const trendCounts = trend.occupied_counts || [];
+        
+        console.log('Trend data received:', { dates: trendDates, counts: trendCounts });
+        
+        // Chart 3: Daily Occupancy Trend
+        this.chart3 = new Chart(document.getElementById('chart3'), {
+          type: 'line',
+          data: {
+            labels: trendDates,
+            datasets: [{
+              label: 'Bookings per Day',
+              data: trendCounts,
+              fill: false,
+              borderColor: '#ef5350',
+              tension: 0.1,
+              pointBackgroundColor: '#e57373',
+              pointRadius: 6,
+              pointHoverRadius: 8
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Number of Bookings'
+                },
+                ticks: {
+                  stepSize: 1
+                }
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: 'Date'
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                labels: {
+                  color: '#333'
+                }
+              },
+              tooltip: {
+                mode: 'index',
+                intersect: false
+              }
+            },
+            maintainAspectRatio: false
           }
-        },
-        maintainAspectRatio: false
+        });
+      } catch (error) {
+        console.error('Error loading trend data:', error);
+        // Create chart with sample data if API fails
+        const sampleDates = ['2025-07-20', '2025-07-21', '2025-07-22', '2025-07-23', '2025-07-24', '2025-07-25', '2025-07-26'];
+        const sampleCounts = [0, 0, 0, 0, 0, 0, 3]; // Show today's 3 bookings
+        
+        this.chart3 = new Chart(document.getElementById('chart3'), {
+          type: 'line',
+          data: {
+            labels: sampleDates,
+            datasets: [{
+              label: 'Bookings per Day (Sample)',
+              data: sampleCounts,
+              fill: false,
+              borderColor: '#ef5350',
+              tension: 0.1,
+              pointBackgroundColor: '#e57373',
+              pointRadius: 6,
+              pointHoverRadius: 8
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Number of Bookings'
+                },
+                ticks: {
+                  stepSize: 1
+                }
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: 'Date'
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                labels: {
+                  color: '#333'
+                }
+              },
+              tooltip: {
+                mode: 'index',
+                intersect: false
+              }
+            },
+            maintainAspectRatio: false
+          }
+        });
       }
-    });
+      this.loading = false;
+    } catch (err) {
+      this.error = 'Failed to load summary data.';
+      this.loading = false;
+    }
   },
   beforeDestroy() {
     if (this.chart1) this.chart1.destroy();

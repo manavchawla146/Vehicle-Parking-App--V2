@@ -10,17 +10,17 @@
         <!-- Chart 1: Bar - Parking Spots Used per Location -->
         <div class="chart-container">
           <h4>Parking Spots Used per Location</h4>
-          <div id="chart1"></div>
+          <canvas id="chart1"></canvas>
         </div>
         <!-- Chart 2: Bar - Total Cost by Vehicle -->
         <div class="chart-container">
           <h4>Total Cost by Vehicle</h4>
-          <div id="chart2"></div>
+          <canvas id="chart2"></canvas>
         </div>
-        <!-- Chart 3: Line - Parking Duration by Spot -->
+        <!-- Chart 3: Pie - Parking Status -->
         <div class="chart-container">
-          <h4>Parking Duration by Spot</h4>
-          <div id="chart3"></div>
+          <h4>Parking Status</h4>
+          <canvas id="chart3"></canvas>
         </div>
       </div>
     </div>
@@ -29,6 +29,7 @@
 
 <script>
 import Navbar from './us-nav.vue';
+import Chart from 'chart.js/auto';
 
 export default {
   name: 'SummaryPage',
@@ -37,132 +38,261 @@ export default {
   },
   data() {
     return {
-      parkingData: [
-        { id: 120, vehicleNumber: 'TW318888', parkingTime: '2025-06-18 05:40 AM IST', releasingTime: '2025-06-18 06:12 PM IST', location: 'mumbai' },
-        { id: 142, vehicleNumber: 'AP510921', parkingTime: '2025-06-18 08:00 AM IST', releasingTime: '2025-06-18 12:00 PM IST', location: 'delhi' },
-        { id: 145, vehicleNumber: 'MH123456', parkingTime: '2025-06-18 09:00 AM IST', releasingTime: '2025-06-18 01:00 PM IST', location: 'mumbai' }
-      ],
-      parkingLots: [
-        { id: 132, address: 'Dadar Road', availability: 6, location: 'mumbai', pincode: '400028' },
-        { id: 136, address: 'Mumbai Central', availability: 10, location: 'mumbai', pincode: '400037' },
-        { id: 167, address: 'Connaught Place', availability: 15, location: 'delhi', pincode: '110001' }
-      ],
-      chartConfigs: {
-        chart1: {
-          type: 'bar',
-          data: {
-            labels: ['Mumbai', 'Delhi'],
-            datasets: [{
-              label: 'Spots Used',
-              data: [2, 1],
-              backgroundColor: ['#4dd0e1', '#81c784'],
-              borderColor: ['#26a69a', '#66bb6a'],
-              borderWidth: 1
-            }]
-          },
-          options: {
-            scales: {
-              y: {
-                beginAtZero: true
-              }
-            },
-            plugins: {
-              legend: {
-                labels: {
-                  color: '#333'
-                }
-              }
-            }
-          }
-        },
-        chart2: {
-          type: 'bar',
-          data: {
-            labels: ['TW318888', 'AP510921', 'MH123456'],
-            datasets: [{
-              label: 'Total Cost ($)',
-              data: [1544, 480, 480], // 772, 240, 240 minutes * $2/min
-              backgroundColor: ['#4dd0e1', '#81c784', '#ef5350'],
-              borderColor: ['#26a69a', '#66bb6a', '#ef5350'],
-              borderWidth: 1
-            }]
-          },
-          options: {
-            scales: {
-              y: {
-                beginAtZero: true
-              }
-            },
-            plugins: {
-              legend: {
-                labels: {
-                  color: '#333'
-                }
-              }
-            }
-          }
-        },
-        chart3: {
-          type: 'line',
-          data: {
-            labels: ['Spot 120', 'Spot 142', 'Spot 145'],
-            datasets: [{
-              label: 'Duration (minutes)',
-              data: [772, 240, 240], // 05:40 AM to 06:12 PM = 772 minutes
-              fill: false,
-              borderColor: '#26a69a',
-              tension: 0.1
-            }]
-          },
-          options: {
-            scales: {
-              y: {
-                beginAtZero: true
-              }
-            },
-            plugins: {
-              legend: {
-                labels: {
-                  color: '#333'
-                }
-              }
-            }
-          }
-        }
-      }
+      chart1: null,
+      chart2: null,
+      chart3: null,
+      loading: true,
+      error: null,
+      parkingHistory: []
     };
   },
-  mounted() {
-    this.calculateDurationsAndCosts();
+  async mounted() {
+    await this.loadParkingHistory();
   },
   methods: {
-    calculateDurationsAndCosts() {
-      this.parkingData.forEach(spot => {
-        const parking = new Date(spot.parkingTime.replace('IST', '').trim());
-        const releasing = new Date(spot.releasingTime.replace('IST', '').trim());
-        const diffMs = releasing - parking;
-        spot.durationMinutes = diffMs / (1000 * 60); // Duration in minutes
-        const ratePerMinute = 2; // $2 per minute for simplicity
-        spot.totalCost = (spot.durationMinutes * ratePerMinute).toFixed(2); // Cost in dollars
-        // Update chart data dynamically
-        if (spot.id === 120) {
-          this.chartConfigs.chart3.data.datasets[0].data[0] = spot.durationMinutes;
-          this.chartConfigs.chart2.data.datasets[0].data[0] = parseFloat(spot.totalCost);
-        }
-        if (spot.id === 142) {
-          this.chartConfigs.chart3.data.datasets[0].data[1] = spot.durationMinutes;
-          this.chartConfigs.chart2.data.datasets[0].data[1] = parseFloat(spot.totalCost);
-        }
-        if (spot.id === 145) {
-          this.chartConfigs.chart3.data.datasets[0].data[2] = spot.durationMinutes;
-          this.chartConfigs.chart2.data.datasets[0].data[2] = parseFloat(spot.totalCost);
+    async loadParkingHistory() {
+      try {
+        const response = await fetch('/api/user/parking-history');
+        const data = await response.json();
+        this.parkingHistory = data;
+        // Fetch parking status summary for the pie chart
+        const statusRes = await fetch('/api/user/parking-status-summary');
+        const statusData = await statusRes.json();
+        this.createCharts(statusData);
+        this.loading = false;
+      } catch (err) {
+        this.error = 'Failed to load parking history.';
+        this.loading = false;
+        // Create charts with empty data if API fails
+        this.createCharts({active: 0, completed: 0});
+      }
+    },
+    
+    createCharts(statusData) {
+      // Process data for charts
+      const locationData = this.processLocationData();
+      const vehicleData = this.processVehicleData();
+      
+      // Chart 1: Parking Spots Used per Location
+      this.chart1 = new Chart(document.getElementById('chart1'), {
+        type: 'bar',
+        data: {
+          labels: locationData.labels,
+          datasets: [{
+            label: 'Spots Used',
+            data: locationData.data,
+            backgroundColor: ['#4dd0e1', '#81c784', '#ef5350', '#ffd54f', '#9575cd'],
+            borderColor: ['#26a69a', '#66bb6a', '#e57373', '#ffb300', '#7e57c2'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Number of Spots'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#333'
+              }
+            }
+          },
+          maintainAspectRatio: false
         }
       });
+
+      // Chart 2: Total Cost by Vehicle
+      this.chart2 = new Chart(document.getElementById('chart2'), {
+        type: 'bar',
+        data: {
+          labels: vehicleData.labels,
+          datasets: [{
+            label: 'Total Cost ($)',
+            data: vehicleData.data,
+            backgroundColor: ['#4dd0e1', '#81c784', '#ef5350', '#ffd54f', '#9575cd'],
+            borderColor: ['#26a69a', '#66bb6a', '#e57373', '#ffb300', '#7e57c2'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Cost ($)'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#333'
+              }
+            }
+          },
+          maintainAspectRatio: false
+        }
+      });
+
+      // Chart 3: Pie - Parking Status
+      const active = statusData.active || 0;
+      const completed = statusData.completed || 0;
+      this.chart3 = new Chart(document.getElementById('chart3'), {
+        type: 'pie',
+        data: {
+          labels: ['Active', 'Parked Out'],
+          datasets: [{
+            data: [active, completed],
+            backgroundColor: ['#4dd0e1', '#ef5350'],
+            borderColor: ['#26a69a', '#e57373'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              labels: {
+                color: '#333'
+              }
+            }
+          },
+          maintainAspectRatio: false
+        }
+      });
+    },
+    
+    processLocationData() {
+      const locationCount = {};
+      this.parkingHistory.forEach(item => {
+        const location = item.location || 'Unknown';
+        locationCount[location] = (locationCount[location] || 0) + 1;
+      });
+      
+      return {
+        labels: Object.keys(locationCount),
+        data: Object.values(locationCount)
+      };
+    },
+    
+    processVehicleData() {
+      const vehicleCost = {};
+      this.parkingHistory.forEach(item => {
+        if (item.total_cost) {
+          const vehicle = item.vehicle_no || 'Unknown';
+          vehicleCost[vehicle] = (vehicleCost[vehicle] || 0) + parseFloat(item.total_cost);
+        }
+      });
+      
+      return {
+        labels: Object.keys(vehicleCost),
+        data: Object.values(vehicleCost)
+      };
+    },
+    
+    processMonthlyUsageData() {
+      const monthlyUsage = {};
+      
+      // Get last 6 months
+      const months = [];
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const monthKey = date.toLocaleString('default', { month: 'short', year: '2-digit' });
+        months.push(monthKey);
+        monthlyUsage[monthKey] = 0;
+      }
+      
+      // Count parking sessions per month
+      this.parkingHistory.forEach(item => {
+        if (item.timestamp) {
+          const date = new Date(item.timestamp);
+          const monthKey = date.toLocaleString('default', { month: 'short', year: '2-digit' });
+          if (monthlyUsage.hasOwnProperty(monthKey)) {
+            monthlyUsage[monthKey]++;
+          }
+        }
+      });
+      
+      return {
+        labels: months,
+        data: months.map(month => monthlyUsage[month] || 0)
+      };
+    },
+
+    processStatusData() {
+      let active = 0;
+      let completed = 0;
+
+      this.parkingHistory.forEach(item => {
+        if (item.status === 'active') {
+          active++;
+        } else if (item.status === 'completed') {
+          completed++;
+        }
+      });
+
+      return {
+        active: active,
+        completed: completed
+      };
     }
+  },
+  
+  beforeDestroy() {
+    if (this.chart1) this.chart1.destroy();
+    if (this.chart2) this.chart2.destroy();
+    if (this.chart3) this.chart3.destroy();
   }
 };
 </script>
 
 <style>
 @import url('../assets/summary-styles.css');
+
+/* Chart container styles */
+.chart-container {
+  min-height: 300px;
+  max-height: 400px;
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.chart-container h4 {
+  margin-bottom: 15px;
+  color: #333;
+  font-weight: 600;
+}
+
+canvas {
+  width: 100% !important;
+  height: 250px !important;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .chart-container {
+    min-height: 250px;
+    max-height: 300px;
+    padding: 15px;
+  }
+  
+  canvas {
+    height: 200px !important;
+  }
+}
 </style>
