@@ -263,86 +263,59 @@ def get_user_notifications():
         # Get all parking lots
         all_lots = ParkingLot.query.all()
         
-        # Get user's recent parking history (last 30 days)
-        thirty_days_ago = now - timedelta(days=30)
-        recent_usage = ParkingUsageLog.query.filter(
-            ParkingUsageLog.user_id == user_id,
-            ParkingUsageLog.entry_time >= thirty_days_ago
-        ).all()
-        
-        # Get all parking spots the user has ever used
-        all_user_spots = ParkingUsageLog.query.filter_by(user_id=user_id).all()
+        # Get user's parking history from parking_usage_log
+        user_parking_history = ParkingUsageLog.query.filter_by(user_id=user_id).all()
         
         notifications = []
         
-        # Check for unused lots recently
-        used_lot_ids = set()
-        for usage in recent_usage:
-            spot = ParkingSpot.query.get(usage.spot_id)
-            if spot:
-                used_lot_ids.add(spot.lot_id)
-        
-        # Find lots the user hasn't used recently
+        # Analyze each parking lot
         for lot in all_lots:
-            if lot.id not in used_lot_ids:
-                # Check if user has ever used this lot
-                lot_ever_used = any(
-                    ParkingSpot.query.get(usage.spot_id).lot_id == lot.id 
-                    for usage in all_user_spots 
-                    if ParkingSpot.query.get(usage.spot_id)
-                )
+            # Get all spots in this lot
+            lot_spots = ParkingSpot.query.filter_by(lot_id=lot.id).all()
+            spot_ids = [spot.id for spot in lot_spots]
+            
+            # Check if user has ever used any spot in this lot
+            lot_usage = [usage for usage in user_parking_history if usage.spot_id in spot_ids]
+            
+            if lot_usage:
+                # User has used this lot before
+                # Find the most recent usage
+                latest_usage = max(lot_usage, key=lambda x: x.entry_time)
+                days_since_last_use = (now - latest_usage.entry_time).days
                 
-                if lot_ever_used:
-                    # User has used this lot before but not recently
-                    last_usage = None
-                    for usage in all_user_spots:
-                        spot = ParkingSpot.query.get(usage.spot_id)
-                        if spot and spot.lot_id == lot.id:
-                            if not last_usage or usage.entry_time > last_usage.entry_time:
-                                last_usage = usage.entry_time
-                    
-                    if last_usage:
-                        days_since_last_use = (now - last_usage).days
-                        if days_since_last_use > 7:  # More than a week
-                            notifications.append({
-                                'type': 'unused_lot',
-                                'message': f"You haven't used parking lot '{lot.prime_location_name}' for {days_since_last_use} days. Consider trying it again!",
-                                'timestamp': last_usage.strftime('%Y-%m-%d %H:%M:%S'),
-                                'lot_id': lot.id,
-                                'lot_name': lot.prime_location_name,
-                                'days_since_use': days_since_last_use,
-                                'read': False
-                            })
-        
-        # Check for long parking sessions (more than 2 hours)
-        active_reservations = Reservation.query.filter_by(
-            user_id=user_id, 
-            leaving_timestamp=None
-        ).all()
-        
-        for reservation in active_reservations:
-            if reservation.parking_timestamp:
-                duration = now - reservation.parking_timestamp
-                hours_parked = duration.total_seconds() / 3600
+                # Create notification based on how long ago they used it
+                if days_since_last_use > 14:  # More than a month
+                    time_description = "a very long time"
+                elif days_since_last_use > 10:  # More than 2 weeks
+                    time_description = "a long time"
+                elif days_since_last_use > 4:  # More than a week
+                    time_description = "some time"
+                else:
+                    continue  # Skip if used recently
                 
-                if hours_parked > 2:
-                    spot = ParkingSpot.query.get(reservation.spot_id)
-                    lot_name = "Unknown Lot"
-                    if spot:
-                        lot = ParkingLot.query.get(spot.lot_id)
-                        if lot:
-                            lot_name = lot.prime_location_name
-                    
-                    notifications.append({
-                        'type': 'long_session',
-                        'message': f"Your parking session at '{lot_name}' has been active for {hours_parked:.1f} hours",
-                        'timestamp': reservation.parking_timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-                        'hours_parked': hours_parked,
-                        'read': False
-                    })
+                notifications.append({
+                    'type': 'unused_lot',
+                    'message': f"You haven't booked '{lot.prime_location_name}' parking lot from {time_description}",
+                    'timestamp': latest_usage.entry_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'lot_id': lot.id,
+                    'lot_name': lot.prime_location_name,
+                    'days_since_use': days_since_last_use,
+                    'read': False
+                })
+            else:
+                # User has never used this lot
+                notifications.append({
+                    'type': 'never_used_lot',
+                    'message': f"You haven't tried '{lot.prime_location_name}' parking lot yet. Give it a try!",
+                    'timestamp': now.strftime('%Y-%m-%d %H:%M:%S'),
+                    'lot_id': lot.id,
+                    'lot_name': lot.prime_location_name,
+                    'days_since_use': None,
+                    'read': False
+                })
         
-        # Sort notifications by timestamp (newest first)
-        notifications.sort(key=lambda x: x['timestamp'], reverse=True)
+        # Sort notifications by days since last use (most unused first)
+        notifications.sort(key=lambda x: x.get('days_since_use', 0) or 0, reverse=True)
         
         return jsonify({
             'notifications': notifications,
