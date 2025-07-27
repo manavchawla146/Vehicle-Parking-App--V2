@@ -266,10 +266,27 @@ def get_user_notifications():
         # Get user's parking history from parking_usage_log
         user_parking_history = ParkingUsageLog.query.filter_by(user_id=user_id).all()
         
+        # Get user's active reservations (currently using)
+        active_reservations = Reservation.query.filter_by(
+            user_id=user_id, 
+            leaving_timestamp=None
+        ).all()
+        
+        # Get lot IDs that user is currently using
+        currently_using_lot_ids = set()
+        for reservation in active_reservations:
+            spot = ParkingSpot.query.get(reservation.spot_id)
+            if spot:
+                currently_using_lot_ids.add(spot.lot_id)
+        
         notifications = []
         
         # Analyze each parking lot
         for lot in all_lots:
+            # Skip if user is currently using this lot
+            if lot.id in currently_using_lot_ids:
+                continue
+                
             # Get all spots in this lot
             lot_spots = ParkingSpot.query.filter_by(lot_id=lot.id).all()
             spot_ids = [spot.id for spot in lot_spots]
@@ -284,11 +301,11 @@ def get_user_notifications():
                 days_since_last_use = (now - latest_usage.entry_time).days
                 
                 # Create notification based on how long ago they used it
-                if days_since_last_use > 14:  # More than a month
+                if days_since_last_use > 30:  # More than a month
                     time_description = "a very long time"
-                elif days_since_last_use > 10:  # More than 2 weeks
+                elif days_since_last_use > 14:  # More than 2 weeks
                     time_description = "a long time"
-                elif days_since_last_use > 4:  # More than a week
+                elif days_since_last_use > 7:  # More than a week
                     time_description = "some time"
                 else:
                     continue  # Skip if used recently
