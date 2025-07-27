@@ -15,7 +15,6 @@
               </button>
               <h3 style="margin: 0; flex-grow: 1; text-align: center;">Recent parking history</h3>
               <div style="display: flex; gap: 10px;">
-                <button class="action-btn" @click="generatePdfReport" style="background-color: #ff6b35;">Generate PDF</button>
                 <button class="action-btn" @click="exportParkingHistory">Export</button>
               </div>
             </div>
@@ -532,36 +531,7 @@ export default {
       }
     },
 
-    async generatePdfReport() {
-      try {
-        const response = await fetch('/api/user/generate-pdf-report', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        });
 
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'parking_report.pdf';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          alert('PDF report generated successfully!');
-        } else {
-          const errorData = await response.json();
-          alert(`Failed to generate PDF report: ${errorData.error || response.statusText}`);
-        }
-      } catch (error) {
-        console.error('Error generating PDF report:', error);
-        alert('Network error generating PDF report!');
-      }
-    }
   },
   created() {
     this.fetchParkingLots();

@@ -15,7 +15,7 @@ celery.conf.timezone = 'Asia/Kolkata'
 
 celery.conf.beat_schedule = {
     'daily-reminder-task': {
-        'task': 'jobs.reminders.send_reminder',  # Just prints log
-        'schedule': crontab(hour=2, minute=19),  # 2:25 AM
+        'task': 'jobs.reminders.send_reminder',  # Send emails with PDF reports
+        'schedule': crontab(hour=2, minute=40),  # 2:40 AM
     },
 }
