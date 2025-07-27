@@ -1,177 +1,181 @@
 <template>
-  <div class="container">
-    <div class="dash-box">
-      <h2><i class="fas fa-search"></i> Admin Search</h2>
-      <AdminNavbar />
-      <!-- Search Section -->
-      <div class="search-section">
-        <div class="search-container">
-          <select v-model="searchBy" class="filter-dropdown" @change="updateSearch">
-            <option value="userId">User ID</option>
-            <option value="name">Name</option>
-            <option value="email">Email</option>
-            <option value="primeLocation">Parking Lot by Name</option>
-            <option value="pricePerHour">Parking Lot by Price</option>
-          </select>
-          <input
-            type="text"
-            v-model="searchString"
-            class="search-input"
-            placeholder="Enter search term"
-            @keyup="searchItems"
-          />
+  <div class="page-container">
+    <AdminNavbar />
+    <div class="profile-container">
+      <div class="profile-card">
+        <div class="dashboard-header">
+          <h2><i class="fas fa-search"></i> Admin Search</h2>
         </div>
-      </div>
-
-      <!-- Users Table -->
-      <div class="users-table-wrapper" v-if="(filteredUsers.length || searchBy === 'userId' || searchBy === 'name' || searchBy === 'email') && searchBy !== 'primeLocation' && searchBy !== 'pricePerHour'">
-        <table class="users-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in filteredUsers" :key="user.id">
-              <td>{{ user.id }}</td>
-              <td>{{ user.name }}</td>
-              <td>{{ user.email }}</td>
-              <td>{{ user.status }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Parking Lots Section -->
-      <div v-if="filteredParkingLots.length && (searchBy === 'primeLocation' || searchBy === 'pricePerHour')" class="parking-lots">
-        <div v-for="lot in filteredParkingLots" :key="lot.id" class="lot-card">
-          <h4>
-            {{ lot.primeLocation }} (Occupied: {{ lot.slots.filter(s => s.status === 'O').length }}/{{ lot.slots.length }})
-          </h4>
-          <div class="button-group">
-            <button class="action-btn edit-btn" @click="openEditModal(lot)">Edit</button>
-            <button class="action-btn delete-btn" @click="deleteLot(lot.id)">Delete</button>
-          </div>
-          <div class="parking-grid">
-            <span
-              v-for="slot in lot.slots"
-              :key="slot.slot_number"
-              :class="['parking-spot', { occupied: slot.status === 'O' }]"
-              @click="openSlotModal(lot, slot)"
-              style="cursor:pointer"
-            >
-              {{ slot.status }}
-            </span>
+        <!-- Search Section -->
+        <div class="search-section">
+          <div class="search-container">
+            <select v-model="searchBy" class="filter-dropdown" @change="updateSearch">
+              <option value="userId">User ID</option>
+              <option value="name">Name</option>
+              <option value="email">Email</option>
+              <option value="primeLocation">Parking Lot by Name</option>
+              <option value="pricePerHour">Parking Lot by Price</option>
+            </select>
+            <input
+              type="text"
+              v-model="searchString"
+              class="search-input"
+              placeholder="Enter search term"
+              @keyup="searchItems"
+            />
           </div>
         </div>
-      </div>
-      <p v-if="!filteredParkingLots.length && (searchBy === 'primeLocation' || searchBy === 'pricePerHour') && searchString">No parking lots found matching your search.</p>
 
-      <!-- Modal for Editing Parking Lot -->
-      <div v-if="editModalVisible" class="modal-overlay" @click.self="closeEditModal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>Edit Parking Lot</h3>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label>Prime Location Name:</label>
-              <input v-model="editLotData.primeLocation" type="text" class="profile-input" />
+        <!-- Users Table -->
+        <div class="users-table-wrapper" v-if="(filteredUsers.length || searchBy === 'userId' || searchBy === 'name' || searchBy === 'email') && searchBy !== 'primeLocation' && searchBy !== 'pricePerHour'">
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in filteredUsers" :key="user.id">
+                <td>{{ user.id }}</td>
+                <td>{{ user.name }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.status }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Parking Lots Section -->
+        <div v-if="filteredParkingLots.length && (searchBy === 'primeLocation' || searchBy === 'pricePerHour')" class="parking-lots">
+          <div v-for="lot in filteredParkingLots" :key="lot.id" class="lot-card">
+            <h4>
+              {{ lot.primeLocation }} (Occupied: {{ lot.slots.filter(s => s.status === 'O').length }}/{{ lot.slots.length }})
+            </h4>
+            <div class="button-group">
+              <button class="action-btn edit-btn" @click="openEditModal(lot)">Edit</button>
+              <button class="action-btn delete-btn" @click="deleteLot(lot.id)">Delete</button>
             </div>
-            <div class="form-group">
-              <label>Address:</label>
-              <input v-model="editLotData.address" type="text" class="profile-input" />
+            <div class="parking-grid">
+              <span
+                v-for="slot in lot.slots"
+                :key="slot.slot_number"
+                :class="['parking-spot', { occupied: slot.status === 'O' }]"
+                @click="openSlotModal(lot, slot)"
+                style="cursor:pointer"
+              >
+                {{ slot.status }}
+              </span>
             </div>
-            <div class="form-group">
-              <label>Pin Code:</label>
-              <input v-model="editLotData.pinCode" type="text" class="profile-input" />
-            </div>
-            <div class="form-group">
-              <label>Price (per hour):</label>
-              <input v-model.number="editLotData.pricePerHour" type="number" class="profile-input" />
-            </div>
-            <div class="form-group">
-              <label>Maximum Spots:</label>
-              <input v-model.number="editLotData.total" type="number" class="profile-input" @input="updateEditOccupiedSpots" />
-            </div>
-          </div>
-          <div class="button-group">
-            <button class="action-btn save-btn" @click="updateLot">Save</button>
-            <button class="action-btn cancel-btn" @click="closeEditModal">Cancel</button>
           </div>
         </div>
-      </div>
+        <p v-if="!filteredParkingLots.length && (searchBy === 'primeLocation' || searchBy === 'pricePerHour') && searchString">No parking lots found matching your search.</p>
 
-      <!-- Slot Modal -->
-      <div v-if="slotModalVisible" class="modal-overlay" @click.self="closeSlotModal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>Slot Details</h3>
-          </div>
-          <div class="modal-body">
-            <p>Parking Lot: {{ selectedLot.primeLocation }}</p>
-            <p>Slot Number: {{ selectedSlot.slot_number }}</p>
-            <p>Status: {{ selectedSlot.status === 'O' ? 'Occupied' : 'Available' }}</p>
-            <p v-if="selectedSlot.status === 'O'">Vehicle: {{ selectedSlot.vehicle_id || 'N/A' }}</p>
-            <p v-if="selectedSlot.status === 'O'">User: {{ selectedSlot.username || 'N/A' }}</p>
-          </div>
-          <div class="button-group">
-            <button v-if="selectedSlot.status === 'A'" class="action-btn modal-delete-btn" @click="deleteSlot(selectedLot.id, selectedSlot.slot_number)">Delete</button>
-            <button class="action-btn modal-cancel-btn" @click="closeSlotModal">Close</button>
+        <!-- Modal for Editing Parking Lot -->
+        <div v-if="editModalVisible" class="modal-overlay" @click.self="closeEditModal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Edit Parking Lot</h3>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label>Prime Location Name:</label>
+                <input v-model="editLotData.primeLocation" type="text" class="profile-input" />
+              </div>
+              <div class="form-group">
+                <label>Address:</label>
+                <input v-model="editLotData.address" type="text" class="profile-input" />
+              </div>
+              <div class="form-group">
+                <label>Pin Code:</label>
+                <input v-model="editLotData.pinCode" type="text" class="profile-input" />
+              </div>
+              <div class="form-group">
+                <label>Price (per hour):</label>
+                <input v-model.number="editLotData.pricePerHour" type="number" class="profile-input" />
+              </div>
+              <div class="form-group">
+                <label>Maximum Spots:</label>
+                <input v-model.number="editLotData.total" type="number" class="profile-input" @input="updateEditOccupiedSpots" />
+              </div>
+            </div>
+            <div class="button-group">
+              <button class="action-btn save-btn" @click="updateLot">Save</button>
+              <button class="action-btn cancel-btn" @click="closeEditModal">Cancel</button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Detail Modal -->
-      <div v-if="detailModalVisible" class="modal-overlay" @click.self="closeDetailModal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>Slot Details</h3>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label>Prime Location:</label>
-              <input v-model="selectedLot.primeLocation" type="text" class="profile-input" readonly />
+        <!-- Slot Modal -->
+        <div v-if="slotModalVisible" class="modal-overlay" @click.self="closeSlotModal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Slot Details</h3>
             </div>
-            <div class="form-group">
-              <label>Address:</label>
-              <input v-model="selectedLot.address" type="text" class="profile-input" readonly />
+            <div class="modal-body">
+              <p>Parking Lot: {{ selectedLot.primeLocation }}</p>
+              <p>Slot Number: {{ selectedSlot.slot_number }}</p>
+              <p>Status: {{ selectedSlot.status === 'O' ? 'Occupied' : 'Available' }}</p>
+              <p v-if="selectedSlot.status === 'O'">Vehicle: {{ selectedSlot.vehicle_id || 'N/A' }}</p>
+              <p v-if="selectedSlot.status === 'O'">User: {{ selectedSlot.username || 'N/A' }}</p>
             </div>
-            <div class="form-group">
-              <label>Pin Code:</label>
-              <input v-model="selectedLot.pinCode" type="text" class="profile-input" readonly />
+            <div class="button-group">
+              <button v-if="selectedSlot.status === 'A'" class="action-btn modal-delete-btn" @click="deleteSlot(selectedLot.id, selectedSlot.slot_number)">Delete</button>
+              <button class="action-btn modal-cancel-btn" @click="closeSlotModal">Close</button>
             </div>
-            <div class="form-group">
-              <label>Price (per hour):</label>
-              <input v-model.number="selectedLot.pricePerHour" type="number" class="profile-input" readonly />
-            </div>
-            <div class="form-group">
-              <label>Maximum Spots:</label>
-              <input v-model.number="selectedLot.total" type="number" class="profile-input" readonly />
-            </div>
-            <p>Slot Number: {{ selectedSlot.slot_number }}</p>
-            <p>Status: {{ selectedSlot.status === 'O' ? 'Occupied' : 'Available' }}</p>
-          </div>
-          <div class="button-group">
-            <button class="action-btn modal-cancel-btn" @click="closeDetailModal">Close</button>
           </div>
         </div>
-      </div>
 
-      <!-- Deletion Restriction Modal -->
-      <div v-if="deletionRestrictionModalVisible" class="modal-overlay" @click.self="deletionRestrictionModalVisible = false">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>Deletion Restricted</h3>
+        <!-- Detail Modal -->
+        <div v-if="detailModalVisible" class="modal-overlay" @click.self="closeDetailModal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Slot Details</h3>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label>Prime Location:</label>
+                <input v-model="selectedLot.primeLocation" type="text" class="profile-input" readonly />
+              </div>
+              <div class="form-group">
+                <label>Address:</label>
+                <input v-model="selectedLot.address" type="text" class="profile-input" readonly />
+              </div>
+              <div class="form-group">
+                <label>Pin Code:</label>
+                <input v-model="selectedLot.pinCode" type="text" class="profile-input" readonly />
+              </div>
+              <div class="form-group">
+                <label>Price (per hour):</label>
+                <input v-model.number="selectedLot.pricePerHour" type="number" class="profile-input" readonly />
+              </div>
+              <div class="form-group">
+                <label>Maximum Spots:</label>
+                <input v-model.number="selectedLot.total" type="number" class="profile-input" readonly />
+              </div>
+              <p>Slot Number: {{ selectedSlot.slot_number }}</p>
+              <p>Status: {{ selectedSlot.status === 'O' ? 'Occupied' : 'Available' }}</p>
+            </div>
+            <div class="button-group">
+              <button class="action-btn modal-cancel-btn" @click="closeDetailModal">Close</button>
+            </div>
           </div>
-          <div class="modal-body">
-            <p>You can't delete parking lot as it has an occupied parking slot.</p>
-          </div>
-          <div class="button-group">
-            <button class="action-btn modal-cancel-btn" style="width: 100%; background: linear-gradient(90deg, #26a69a, #4dd0e1); color: #fff; font-size: 18px; font-weight: 500; border-radius: 8px; padding: 10px 0; margin-top: 10px;" @click="deletionRestrictionModalVisible = false">Close</button>
+        </div>
+
+        <!-- Deletion Restriction Modal -->
+        <div v-if="deletionRestrictionModalVisible" class="modal-overlay" @click.self="deletionRestrictionModalVisible = false">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Deletion Restricted</h3>
+            </div>
+            <div class="modal-body">
+              <p>You can't delete parking lot as it has an occupied parking slot.</p>
+            </div>
+            <div class="button-group">
+              <button class="action-btn modal-cancel-btn" style="width: 100%; background: linear-gradient(90deg, #26a69a, #4dd0e1); color: #fff; font-size: 18px; font-weight: 500; border-radius: 8px; padding: 10px 0; margin-top: 10px;" @click="deletionRestrictionModalVisible = false">Close</button>
+            </div>
           </div>
         </div>
       </div>
@@ -439,6 +443,7 @@ export default {
 </script>
 
 <style scoped>
+@import url('../assets/base.css');
 @import url('../assets/ad-dash.css');
 
 .search-section {

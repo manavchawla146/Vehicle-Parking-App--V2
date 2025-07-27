@@ -1,44 +1,48 @@
 <template>
-  <div class="container">
-    <div class="dash-box">
-      <h2><i class="fas fa-users"></i> Admin Users</h2>
-      <AdminNavbar />
-      <!-- Users Table -->
-      <div class="users-table-wrapper">
-        <table class="users-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in users" :key="user.id">
-              <td>{{ user.id }}</td>
-              <td>{{ user.name }}</td>
-              <td>{{ user.email }}</td>
-              <td>{{ user.status }}</td>
-              <td>
-                <button class="action-btn ban-btn" @click="showBanModal(user)">
-                  {{ user.status === 'Active' ? 'Ban' : 'Unban' }}
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-       </div>
+  <div class="page-container">
+    <AdminNavbar />
+    <div class="profile-container">
+      <div class="profile-card">
+        <div class="dashboard-header">
+          <h2><i class="fas fa-users"></i> Admin Users</h2>
+        </div>
+        <!-- Users Table -->
+        <div class="users-table-wrapper">
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in users" :key="user.id">
+                <td>{{ user.id }}</td>
+                <td>{{ user.name }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.status }}</td>
+                <td>
+                  <button class="action-btn ban-btn" @click="showBanModal(user)">
+                    {{ user.status === 'Active' ? 'Ban' : 'Unban' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+         </div>
 
-      <!-- Ban/Unban Confirmation Modal -->
-      <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
-        <div class="modal-content">
-          <h3>{{ modalAction }} Confirmation</h3>
-          <p>Are you sure you want to {{ modalAction.toLowerCase() }} {{ selectedUser.name }}?</p>
-          <div class="button-group">
-            <button class="action-btn confirm-btn" @click="confirmAction">{{ modalAction }}</button>
-            <button class="action-btn cancel-btn" @click="closeModal">Cancel</button>
+        <!-- Ban/Unban Confirmation Modal -->
+        <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+          <div class="modal-content">
+            <h3>{{ modalAction }} Confirmation</h3>
+            <p>Are you sure you want to {{ modalAction.toLowerCase() }} {{ selectedUser.name }}?</p>
+            <div class="button-group">
+              <button class="action-btn confirm-btn" @click="confirmAction">{{ modalAction }}</button>
+              <button class="action-btn cancel-btn" @click="closeModal">Cancel</button>
+            </div>
           </div>
         </div>
       </div>
@@ -117,7 +121,8 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
+@import url('../assets/base.css');
 @import url('../assets/ad-dash.css');
 
 .users-table-wrapper {
@@ -157,14 +162,20 @@ export default {
 
 .action-btn {
   padding: 6px 12px;
+  background: linear-gradient(90deg, #1abc9c, #16a085);
+  color: white;
   border: none;
   border-radius: 5px;
   font-size: 12px;
   font-family: 'Roboto', sans-serif;
   font-weight: 500;
   cursor: pointer;
-  margin-right: 5px;
-  transition: transform 0.2s ease, background-color 0.2s ease;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.action-btn:hover {
+  background: linear-gradient(90deg, #16a085, #1abc9c);
+  transform: translateY(-1px);
 }
 
 .ban-btn {
@@ -178,12 +189,12 @@ export default {
 }
 
 .confirm-btn {
-  background: linear-gradient(90deg, #2ecc71, #27ae60);
+  background: linear-gradient(90deg, #1abc9c, #16a085);
   color: white;
 }
 
 .confirm-btn:hover {
-  background: linear-gradient(90deg, #27ae60, #2ecc71);
+  background: linear-gradient(90deg, #16a085, #1abc9c);
   transform: translateY(-1px);
 }
 

@@ -1,10 +1,12 @@
 <template>
-  <div id="app">
-    <div class="navbar-container">
-      <us-nav></us-nav>
-    </div>
-    <div class="container">
-      <div class="dash-container">
+  <div class="page-container">
+    <us-nav></us-nav>
+    <div class="profile-container">
+      <div class="profile-card">
+        <div class="dashboard-header">
+          <h2><i class="fas fa-car"></i> User Dashboard</h2>
+        </div>
+        
         <!-- Recent Parking History Box -->
         <div class="card">
           <div class="gradient-header">
@@ -543,6 +545,7 @@ export default {
 </script>
 
 <style scoped>
+@import url('../assets/base.css');
 @import url('../assets/us-dash.css');
 /* Additional scoped styles if needed */
 

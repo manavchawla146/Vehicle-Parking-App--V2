@@ -1,26 +1,28 @@
 <template>
-  <div class="container">
-    <div class="summary-container">
-      <Navbar />
-      <div class="summary-header">
-        <h2>Parking Summary</h2>
-      </div>
-      <div class="summary-card">
-        <h3>Summary on Already Used Parking Spots</h3>
-        <!-- Chart 1: Bar - Parking Spots Used per Location -->
-        <div class="chart-container">
-          <h4>Parking Spots Used per Location</h4>
-          <canvas id="chart1"></canvas>
+  <div class="page-container">
+    <Navbar />
+    <div class="profile-container">
+      <div class="profile-card">
+        <div class="dashboard-header">
+          <h2><i class="fas fa-chart-pie"></i> Parking Summary</h2>
         </div>
-        <!-- Chart 2: Bar - Total Cost by Vehicle -->
-        <div class="chart-container">
-          <h4>Total Cost by Vehicle</h4>
-          <canvas id="chart2"></canvas>
-        </div>
-        <!-- Chart 3: Pie - Parking Status -->
-        <div class="chart-container">
-          <h4>Parking Status</h4>
-          <canvas id="chart3"></canvas>
+        <div class="summary-card">
+          <h3>Summary on Already Used Parking Spots</h3>
+          <!-- Chart 1: Bar - Parking Spots Used per Location -->
+          <div class="chart-container">
+            <h4>Parking Spots Used per Location</h4>
+            <canvas id="chart1"></canvas>
+          </div>
+          <!-- Chart 2: Bar - Total Cost by Vehicle -->
+          <div class="chart-container">
+            <h4>Total Cost by Vehicle</h4>
+            <canvas id="chart2"></canvas>
+          </div>
+          <!-- Chart 3: Pie - Parking Status -->
+          <div class="chart-container">
+            <h4>Parking Status</h4>
+            <canvas id="chart3"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -88,6 +90,15 @@ export default {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
+          layout: {
+            padding: {
+              top: 10,
+              bottom: 10,
+              left: 10,
+              right: 10
+            }
+          },
           scales: {
             y: {
               beginAtZero: true,
@@ -103,8 +114,7 @@ export default {
                 color: '#333'
               }
             }
-          },
-          maintainAspectRatio: false
+          }
         }
       });
 
@@ -123,6 +133,15 @@ export default {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
+          layout: {
+            padding: {
+              top: 10,
+              bottom: 10,
+              left: 10,
+              right: 10
+            }
+          },
           scales: {
             y: {
               beginAtZero: true,
@@ -138,8 +157,7 @@ export default {
                 color: '#333'
               }
             }
-          },
-          maintainAspectRatio: false
+          }
         }
       });
 
@@ -159,14 +177,22 @@ export default {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
+          layout: {
+            padding: {
+              top: 10,
+              bottom: 10,
+              left: 10,
+              right: 10
+            }
+          },
           plugins: {
             legend: {
               labels: {
                 color: '#333'
               }
             }
-          },
-          maintainAspectRatio: false
+          }
         }
       });
     },
@@ -257,42 +283,138 @@ export default {
 </script>
 
 <style>
+@import url('../assets/base.css');
 @import url('../assets/summary-styles.css');
+
+/* Override conflicting styles from summary-styles.css */
+.container {
+  display: block !important;
+  justify-content: initial !important;
+  align-items: initial !important;
+  min-height: initial !important;
+  background-color: initial !important;
+  padding: initial !important;
+}
+
+.summary-container {
+  width: initial !important;
+  max-width: initial !important;
+}
+
+.summary-header {
+  background: initial !important;
+  color: initial !important;
+  padding: initial !important;
+  border-radius: initial !important;
+  margin-bottom: initial !important;
+  text-align: initial !important;
+}
+
+.summary-header h2 {
+  font-size: initial !important;
+  font-family: initial !important;
+  font-weight: initial !important;
+  margin: initial !important;
+  color: initial !important;
+}
 
 /* Chart container styles */
 .chart-container {
-  min-height: 300px;
-  max-height: 400px;
+  height: 400px !important;
   margin-bottom: 30px;
   padding: 20px;
   background-color: #f8f9fa;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: relative;
+  overflow: hidden;
 }
 
 .chart-container h4 {
   margin-bottom: 15px;
   color: #333;
   font-weight: 600;
+  font-size: 16px;
+  height: 20px;
+  overflow: hidden;
 }
 
-canvas {
+/* Canvas wrapper to ensure proper sizing */
+.chart-container > div {
+  height: calc(100% - 50px);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Canvas container to prevent overflow */
+.chart-container canvas {
   width: 100% !important;
-  height: 250px !important;
-  max-width: 600px;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  display: block;
   margin: 0 auto;
+}
+
+/* Override specific chart IDs */
+#chart1, #chart2, #chart3 {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
+/* Summary card styles */
+.summary-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+.summary-card h3 {
+  margin-bottom: 25px;
+  color: #2c3e50;
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
   .chart-container {
-    min-height: 250px;
-    max-height: 300px;
+    height: 350px !important;
     padding: 15px;
+    margin-bottom: 20px;
   }
   
-  canvas {
-    height: 200px !important;
+  .chart-container > div {
+    height: calc(100% - 40px);
+  }
+  
+  .summary-card {
+    padding: 20px;
+  }
+  
+  .summary-card h3 {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chart-container {
+    height: 300px !important;
+    padding: 10px;
+  }
+  
+  .chart-container > div {
+    height: calc(100% - 30px);
+  }
+  
+  .summary-card {
+    padding: 15px;
   }
 }
 </style>

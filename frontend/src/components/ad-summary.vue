@@ -1,21 +1,25 @@
 <template>
-  <div class="container">
-    <div class="dash-box">
-      <h2><i class="fas fa-chart-bar"></i> Admin Summary</h2>
-      <AdminNavbar />
-      <div class="summary-card">
-        <!-- Chart Containers -->
-        <div class="chart-container">
-          <h4>Occupancy by Parking Lot</h4>
-          <canvas id="chart1"></canvas>
+  <div class="page-container">
+    <AdminNavbar />
+    <div class="profile-container">
+      <div class="profile-card">
+        <div class="dashboard-header">
+          <h2><i class="fas fa-chart-bar"></i> Admin Summary</h2>
         </div>
-        <div class="chart-container">
-          <h4>Overall Parking Utilization</h4>
-          <canvas id="chart2"></canvas>
-        </div>
-        <div class="chart-container">
-          <h4>Daily Occupancy Trend</h4>
-          <canvas id="chart3"></canvas>
+        <div class="summary-card">
+          <!-- Chart Containers -->
+          <div class="chart-container">
+            <h4>Occupancy by Parking Lot</h4>
+            <canvas id="chart1"></canvas>
+          </div>
+          <div class="chart-container">
+            <h4>Overall Parking Utilization</h4>
+            <canvas id="chart2"></canvas>
+          </div>
+          <div class="chart-container">
+            <h4>Daily Occupancy Trend</h4>
+            <canvas id="chart3"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -244,6 +248,7 @@ export default {
 </script>
 
 <style>
+@import url('../assets/base.css');
 @import url('../assets/ad-dash.css');
 
 /* Ensure chart containers have a controlled size */

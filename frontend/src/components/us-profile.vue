@@ -154,6 +154,9 @@ export default {
 </script>
 
 <style scoped>
+@import url('../assets/base.css');
+
+/* Profile styles */
 .page-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #f0f4f8 0%, #d9e4f5 100%);

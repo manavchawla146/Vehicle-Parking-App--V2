@@ -21,20 +21,24 @@ export default {
 </script>
 
 <style scoped>
+@import url('../assets/base.css');
+
 .navbar {
   background: linear-gradient(90deg, #26a69a, #4dd0e1);
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 20px;
+  padding: 15px 30px;
+  border-radius: 0;
+  margin-bottom: 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: space-between;
   align-items: center;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  width: 100%;
 }
 
 .navbar-brand {
-  text-align: center;
-  margin-bottom: 10px;
+  text-align: left;
+  margin-bottom: 0;
 }
 
 .navbar-brand h2 {
@@ -51,8 +55,9 @@ export default {
 
 .navbar-links {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  gap: 20px;
 }
 
 .nav-link {
@@ -61,15 +66,15 @@ export default {
   font-size: 14px;
   font-family: 'Roboto', sans-serif;
   font-weight: 500;
-  margin: 5px 0;
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: 5px;
   transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 .nav-link:hover {
   color: #e0f7fa;
   background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
-  padding: 5px 10px;
 }
 
 .profile-btn {
@@ -77,33 +82,41 @@ export default {
   text-decoration: none;
   font-size: 20px;
   margin-left: 10px;
+  padding: 8px 12px;
+  border-radius: 5px;
   transition: color 0.3s ease, background-color 0.3s ease;
 }
 
 .profile-btn:hover {
   color: #e0f7fa;
   background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
-  padding: 5px 10px;
 }
 
 /* Responsive adjustments */
-@media (min-width: 601px) {
+@media (max-width: 600px) {
   .navbar {
-    flex-direction: row;
-    justify-content: space-between;
+    padding: 10px 20px;
+    flex-direction: column;
+    gap: 10px;
   }
+  
   .navbar-brand {
     margin-bottom: 0;
   }
+  
   .navbar-links {
     flex-direction: row;
+    gap: 10px;
   }
+  
   .nav-link {
-    margin: 0 15px;
+    font-size: 12px;
+    padding: 6px 12px;
   }
+  
   .profile-btn {
-    margin-left: 15px;
+    font-size: 18px;
+    padding: 6px 10px;
   }
 }
 </style>
