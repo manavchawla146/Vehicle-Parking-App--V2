@@ -1,6 +1,5 @@
 from celery_app import create_app, db
 from celery_app import models  # noqa: F401
-import jobs.scheduler  # Import scheduler to load beat_schedule configuration
 
 app = create_app()
 
