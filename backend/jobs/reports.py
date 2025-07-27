@@ -10,8 +10,159 @@ from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 import os
 import tempfile
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from app import app
 
 logger = logging.getLogger(__name__)
+
+def send_email_to_all_users(subject, message):
+    """Send email to all users (excluding admin)"""
+    try:
+        # Email configuration
+        smtp_server = "smtp.gmail.com"
+        smtp_port = 587
+        sender_email = "manavchawla146@gmail.com"
+        sender_password = "nvwj xmrv tzry qbji"
+        
+        # Get all users (excluding admin)
+        with app.app_context():
+            users = User.query.filter(User.role != 'admin').all()
+        
+        if not users:
+            logger.info("No users found to send notification")
+            return
+        
+        # Send emails to all users
+        success_count = 0
+        failed_count = 0
+        
+        for user in users:
+            if user.email:
+                try:
+                    # Create message
+                    msg = MIMEMultipart()
+                    msg['From'] = sender_email
+                    msg['To'] = user.email
+                    msg['Subject'] = subject
+                    msg.attach(MIMEText(message, 'plain'))
+                    
+                    # Create SMTP session
+                    server = smtplib.SMTP(smtp_server, smtp_port)
+                    server.starttls()
+                    server.login(sender_email, sender_password)
+                    
+                    # Send email
+                    text = msg.as_string()
+                    server.sendmail(sender_email, user.email, text)
+                    server.quit()
+                    
+                    success_count += 1
+                    logger.info(f"✅ Notification sent to {user.email}")
+                    
+                except Exception as e:
+                    failed_count += 1
+                    logger.error(f"❌ Failed to send notification to {user.email}: {e}")
+            else:
+                logger.warning(f"No email address for user: {user.username}")
+                failed_count += 1
+        
+        result = f"📧 Notifications sent: {success_count} successful, {failed_count} failed"
+        logger.info(result)
+        return result
+        
+    except Exception as e:
+        logger.error(f"❌ Error sending notifications: {e}")
+        return f"Error: {e}"
+
+@celery.task(name='jobs.reports.send_lot_addition_notification')
+def send_lot_addition_notification(lot_data):
+    """Send email notification to all users when a new parking lot is added"""
+    try:
+        logger.info("📧 Starting lot addition notification...")
+        
+        subject = "🚗 New Parking Lot Added - Parking App"
+        message = f"""
+Hello from Parking App!
+
+Great news! A new parking lot has been added to our system.
+
+📍 New Parking Lot Details:
+• Location: {lot_data['primeLocation']}
+• Address: {lot_data['address']}
+• Pin Code: {lot_data['pinCode']}
+• Price: ${lot_data['pricePerHour']}/hour
+• Total Spots: {lot_data['maxSpots']}
+
+🎯 What's New:
+• More parking options available
+• Better accessibility in your area
+• Competitive pricing
+
+🔍 Quick Actions:
+• Search for this new location
+• Book a spot right away
+• Check availability
+
+Thank you for using our parking service!
+
+Best regards,
+Parking App Team
+        """
+        
+        result = send_email_to_all_users(subject, message)
+        logger.info(f"📧 Lot addition notification completed: {result}")
+        return result
+        
+    except Exception as e:
+        error_msg = f"❌ Error in lot addition notification: {e}"
+        logger.error(error_msg)
+        return error_msg
+
+@celery.task(name='jobs.reports.send_lot_deletion_notification')
+def send_lot_deletion_notification(lot_data):
+    """Send email notification to all users when a parking lot is deleted"""
+    try:
+        logger.info("📧 Starting lot deletion notification...")
+        
+        subject = "⚠️ Parking Lot Removed - Parking App"
+        message = f"""
+Hello from Parking App!
+
+Important Update: A parking lot has been removed from our system.
+
+📍 Removed Parking Lot Details:
+• Location: {lot_data['primeLocation']}
+• Address: {lot_data['address']}
+• Pin Code: {lot_data['pinCode']}
+
+⚠️ Important Information:
+• This location is no longer available for parking
+• Please use alternative parking locations
+• Your existing bookings at this location may be affected
+
+🔍 Alternative Actions:
+• Search for other nearby parking locations
+• Check our updated parking lot list
+• Contact support if you have questions
+
+We apologize for any inconvenience this may cause.
+
+Thank you for using our parking service!
+
+Best regards,
+Parking App Team
+        """
+        
+        result = send_email_to_all_users(subject, message)
+        logger.info(f"📧 Lot deletion notification completed: {result}")
+        return result
+        
+    except Exception as e:
+        error_msg = f"❌ Error in lot deletion notification: {e}"
+        logger.error(error_msg)
+        return error_msg
 
 @celery.task(name='jobs.reports.generate_monthly_report')
 def generate_monthly_report(user_id=None):

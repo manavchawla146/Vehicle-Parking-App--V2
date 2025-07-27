@@ -38,6 +38,16 @@ def add_lot():
         
         db.session.commit()
         logger.info(f"Successfully added lot {lot.id} with {data['maxSpots']} spots")
+        
+        # Send email notification to all users about the new lot using Celery task with 5-minute delay
+        try:
+            from jobs.reports import send_lot_addition_notification
+            # Schedule the task to run after 5 minutes (300 seconds)
+            send_lot_addition_notification.apply_async(args=[data], countdown=60)
+            logger.info("📧 Lot addition notification task scheduled for 5 minutes from now")
+        except Exception as e:
+            logger.error(f"❌ Failed to schedule lot addition notification: {e}")
+        
         return jsonify({'message': 'Lot added successfully', 'id': lot.id}), 201
     except KeyError as e:
         logger.error(f"Missing required field: {e}")
@@ -78,6 +88,25 @@ def delete_lot(lot_id):
     lot = ParkingLot.query.get_or_404(lot_id)
     if any(spot.status == 'O' for spot in lot.spots):
         return jsonify({'error': 'Cannot delete lot with occupied slots'}), 400
+    
+    # Store lot data before deletion for notification
+    lot_data = {
+        'primeLocation': lot.prime_location_name,
+        'address': lot.address,
+        'pinCode': lot.pin_code,
+        'pricePerHour': lot.price,
+        'maxSpots': lot.number_of_spots
+    }
+    
+    # Send email notification to all users about the lot deletion using Celery task with 5-minute delay
+    try:
+        from jobs.reports import send_lot_deletion_notification
+        # Schedule the task to run after 5 minutes (300 seconds)
+        send_lot_deletion_notification.apply_async(args=[lot_data], countdown=60)
+        logger.info("📧 Lot deletion notification task scheduled for 5 minutes from now")
+    except Exception as e:
+        logger.error(f"❌ Failed to schedule lot deletion notification: {e}")
+    
     db.session.delete(lot)
     db.session.commit()
     return jsonify({'message': 'Lot deleted successfully'}), 200
