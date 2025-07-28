@@ -11,7 +11,7 @@ user_bp = Blueprint('user', __name__, url_prefix='/api')
 
 def get_current_time():
     """Get current time with proper timezone handling"""
-    return datetime.now(timezone.utc)
+    return datetime.now()  # Use local time instead of UTC
 
 def get_user_cache_key(prefix, user_id=None):
     """Generate user-specific cache key"""
@@ -69,9 +69,9 @@ def update_profile():
     return jsonify({'message': 'Profile updated successfully'})
 
 @user_bp.route('/parking/search', methods=['GET'])
-@cache.cached(timeout=60, key_prefix='parking_search')
 def search_parking():
-    """Search parking lots with caching"""
+    """Search parking lots without caching to avoid data corruption"""
+
     user_id = session.get('user_id')
     if not user_id or user_id == 'admin':
         return jsonify({'error': 'Not logged in or admin'}), 401
@@ -100,9 +100,9 @@ def search_parking():
     return jsonify(result)
 
 @user_bp.route('/parking/lot/<int:lot_id>/spots', methods=['GET'])
-@cache.cached(timeout=120, key_prefix='lot_spots')
 def get_lot_spots(lot_id):
-    """Get spots for a specific lot with caching"""
+    """Get spots for a specific lot without caching to avoid data corruption"""
+
     user_id = session.get('user_id')
     if not user_id or user_id == 'admin':
         return jsonify({'error': 'Not logged in or admin'}), 401
@@ -161,29 +161,20 @@ def reserve_parking():
     db.session.add(reservation)
     db.session.commit()
     
-    # Invalidate relevant cache after reservation
-    invalidate_user_cache(user_id)
+    # No cache invalidation needed since we removed caching
+    logger.info("✅ Reservation completed without caching")
     
     logger.info(f"Successfully reserved spot {spot.id} in lot {lot.id} for user {user_id} at {current_time}")
     return jsonify({'message': 'Parking reserved successfully', 'reservationId': reservation.id, 'spotId': spot.id})
 
 @user_bp.route('/user/parking-history', methods=['GET'])
 def get_user_parking_history():
-    """Get user parking history with user-specific caching"""
+    """Get user parking history without caching to avoid release errors"""
     user_id = session.get('user_id')
     if not user_id or user_id == 'admin':
         return jsonify({'error': 'Not logged in or admin'}), 401
 
-    # Use user-specific cache key
-    cache_key = get_user_cache_key('user_history', user_id)
-    
-    # Try to get from cache first
-    cached_result = cache.get(cache_key)
-    if cached_result:
-        logger.info(f"📊 Returning cached parking history for user {user_id}")
-        return jsonify(cached_result)
-
-    # If not in cache, fetch from database
+    # Fetch from database directly (no caching)
     # 1. Active reservations (not yet released)
     active_reservations = Reservation.query.filter_by(user_id=user_id, leaving_timestamp=None).all()
     active_rows = []
@@ -197,6 +188,7 @@ def get_user_parking_history():
             'vehicle_no': spot.vehicle_id,
             'timestamp': res.parking_timestamp.isoformat() if res.parking_timestamp else None,
             'slot_number': spot.slot_number,
+            'pricePerHour': lot.price,  # Add price per hour for cost calculation
         })
 
     # 2. Completed sessions from ParkingUsageLog
@@ -214,13 +206,13 @@ def get_user_parking_history():
             'releasing_time': log.exit_time.isoformat() if log.exit_time else None,
             'total_cost': log.cost,
             'slot_number': spot.slot_number,
+            'pricePerHour': lot.price,  # Add price per hour for reference
         })
 
-    # Combine and cache result
+    # Combine result (no caching)
     result = active_rows + parked_out_rows
-    cache.set(cache_key, result, timeout=120)  # Cache for 2 minutes
     
-    logger.info(f"📊 Fetched and cached {len(result)} parking history records for user {user_id}")
+    logger.info(f"📊 Fetched {len(result)} parking history records for user {user_id}")
     return jsonify(result)
 
 @user_bp.route('/user/parking-status-summary', methods=['GET'])
@@ -305,11 +297,21 @@ def release_parking():
 
     try:
         lot = ParkingLot.query.get(spot.lot_id)
-        exit_time = datetime.now(timezone.utc)
+        if not lot:
+            return jsonify({'error': 'Lot not found'}), 404
+            
+        exit_time = datetime.now()  # Use local time instead of UTC
         reservation = Reservation.query.filter_by(spot_id=spot_id, user_id=user_id).order_by(Reservation.id.desc()).first()
+        
+        if not reservation:
+            return jsonify({'error': 'Reservation not found'}), 404
+            
         entry_time = reservation.parking_timestamp
         duration_hours = max((exit_time - entry_time).total_seconds() / 3600, 1)  # Minimum 1 hour
         cost = duration_hours * lot.price
+        
+        # Log the cost calculation for debugging
+        logger.info(f"💰 Cost calculation: Entry={entry_time}, Exit={exit_time}, Duration={duration_hours:.2f} hours, Price={lot.price}, Cost={cost:.2f}")
 
         # Log usage
         usage_log = ParkingUsageLog(
@@ -337,8 +339,8 @@ def release_parking():
 
         db.session.commit()
         
-        # Invalidate user cache after release
-        invalidate_user_cache(user_id)
+        # No cache invalidation needed since we removed caching
+        logger.info("✅ Release completed without caching")
         
         logger.info(f"Successfully released spot {spot_id} for user {user_id}")
         return jsonify({
@@ -354,19 +356,12 @@ def release_parking():
 
 @user_bp.route('/user/notifications', methods=['GET'])
 def get_user_notifications():
-    """Get user notifications with user-specific caching"""
+    """Get user notifications without caching to avoid errors"""
     user_id = session.get('user_id')
     if not user_id or user_id == 'admin':
         return jsonify({'error': 'Not logged in or admin'}), 401
     
-    # Use user-specific cache key
-    cache_key = get_user_cache_key('user_notifications', user_id)
-    
-    # Try to get from cache first
-    cached_result = cache.get(cache_key)
-    if cached_result:
-        logger.info(f"📊 Returning cached notifications for user {user_id}")
-        return jsonify(cached_result)
+    # Fetch from database directly (no caching)
     
     try:
         from datetime import datetime, timedelta
@@ -441,10 +436,7 @@ def get_user_notifications():
             'unread_count': len([n for n in notifications if not n.get('read', False)])
         }
         
-        # Cache the result
-        cache.set(cache_key, result, timeout=60)  # Cache for 1 minute
-        
-        logger.info(f"📊 Generated and cached {len(notifications)} notifications for user {user_id}")
+        logger.info(f"📊 Generated {len(notifications)} notifications for user {user_id}")
         return jsonify(result)
         
     except Exception as e:

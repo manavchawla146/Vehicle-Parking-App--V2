@@ -479,6 +479,7 @@ export default {
         alert('Server error: ' + err.message);
       }
     },
+
   },
   created() {
     this.fetchLots();
@@ -489,13 +490,7 @@ export default {
 
 <style scoped>
 @import url('../assets/ad-dash.css');
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  padding: 0 16px;
-}
+
 .dashboard-add-btn {
   min-width: 120px;
   max-width: 160px;

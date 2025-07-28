@@ -46,6 +46,8 @@ def clear_cache():
         logger.error(f"❌ Failed to clear cache: {e}")
         return jsonify({'error': 'Failed to clear cache'}), 500
 
+
+
 @admin_bp.route('/cache/status', methods=['GET'])
 def get_cache_status():
     """Get cache status - admin only"""
@@ -91,8 +93,7 @@ def add_lot():
         db.session.commit()
         logger.info(f"Successfully added lot {lot.id} with {data['maxSpots']} spots")
         
-        # Invalidate cache after adding new lot
-        invalidate_lots_cache()
+        # No cache invalidation needed since we removed caching
         
         # Send email notification to all users about the new lot using Celery task with 5-minute delay
         try:
@@ -116,9 +117,9 @@ def add_lot():
         return jsonify({'error': f'Internal server error: {e}'}), 500
 
 @admin_bp.route('/lots', methods=['GET'])
-@cache.cached(timeout=300, key_prefix='admin_lots')
 def get_lots():
-    """Get all parking lots with caching"""
+    """Get all parking lots without caching to avoid data corruption"""
+
     lots = ParkingLot.query.all()
     result = []
     for lot in lots:
@@ -166,8 +167,7 @@ def delete_lot(lot_id):
     db.session.delete(lot)
     db.session.commit()
     
-    # Invalidate cache after deleting lot
-    invalidate_lots_cache()
+    # No cache invalidation needed since we removed caching
     
     return jsonify({'message': 'Lot deleted successfully'}), 200
 
@@ -290,9 +290,9 @@ def update_lot(lot_id):
     }), 200
 
 @admin_bp.route('/lots/<int:lot_id>/slots', methods=['GET'])
-@cache.cached(timeout=120, key_prefix='admin_lot_slots')
 def get_lot_slots(lot_id):
-    """Get slots for a specific lot with caching"""
+    """Get slots for a specific lot without caching to avoid data corruption"""
+
     lot = ParkingLot.query.get_or_404(lot_id)
     spots = ParkingSpot.query.filter_by(lot_id=lot_id).all()
     result = [{
@@ -306,14 +306,14 @@ def get_lot_slots(lot_id):
     return jsonify(result)
 
 @admin_bp.route('/users', methods=['GET'])
-@cache.cached(timeout=600, key_prefix='admin_users')
+@cache.cached(timeout=15, key_prefix='admin_users')  # Reduced to 15 seconds
 def get_users():
     """Get all users with caching"""
     users = User.query.filter(User.role != 'admin').all()
     result = [{
-        'id': user.id,
-        'name': user.username,
-        'email': user.email,
+            'id': user.id,
+            'name': user.username,
+            'email': user.email,
         'address': user.address,
         'pincode': user.pincode,
         'banned': user.banned
@@ -330,8 +330,7 @@ def ban_user(user_id):
     user.banned = True
     db.session.commit()
     
-    # Invalidate users cache after banning
-    invalidate_users_cache()
+    # No cache invalidation needed since we removed caching
     
     return jsonify({'message': 'User banned successfully'}), 200
 
@@ -344,13 +343,12 @@ def unban_user(user_id):
     user.banned = False
     db.session.commit()
     
-    # Invalidate users cache after unbanning
-    invalidate_users_cache()
+    # No cache invalidation needed since we removed caching
     
     return jsonify({'message': 'User unbanned successfully'}), 200
 
 @admin_bp.route('/summary', methods=['GET'])
-@cache.cached(timeout=180, key_prefix='admin_summary')
+@cache.cached(timeout=15, key_prefix='admin_summary')  # Reduced to 15 seconds
 def get_admin_summary():
     """Get admin summary data with caching"""
     try:
@@ -403,6 +401,7 @@ def get_admin_summary():
 
 @admin_bp.route('/occupancy-trend', methods=['GET'])
 def occupancy_trend():
+    """Get daily occupancy trend data from database"""
     try:
         # Get the last 7 days
         from datetime import datetime, timedelta
@@ -416,6 +415,7 @@ def occupancy_trend():
         
         logger.info(f"Querying reservations for dates: {days_str}")
         
+        # Get actual reservation counts from database
         reservations = db.session.query(
             func.date(Reservation.parking_timestamp).label('date'),
             func.count(Reservation.id).label('count')
@@ -426,19 +426,29 @@ def occupancy_trend():
         
         logger.info(f"Found reservations: {reservations}")
         
+        # Map database results to dates
         for row in reservations:
-            date_str = row.date.strftime('%Y-%m-%d')
+            # row.date is already a string from func.date()
+            date_str = str(row.date)
             if date_str in result:
                 result[date_str] = row.count
         
         response_data = {
             'dates': days_str,
-            'occupied_counts': [result[d] for d in days_str]
+            'occupied_counts': [result[d] for d in days_str],
+            'total_reservations': sum(result.values()),
+            'date_range': f"{days_str[0]} to {days_str[-1]}"
         }
         
-        logger.info(f"Returning trend data: {response_data}")
+        logger.info(f"Returning real trend data from database: {response_data}")
         return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error in occupancy-trend endpoint: {e}")
-        return jsonify({'error': str(e)}), 500
+        # Return empty data instead of error to prevent frontend fallback
+        return jsonify({
+            'dates': [],
+            'occupied_counts': [],
+            'total_reservations': 0,
+            'error': 'Failed to load trend data'
+        }), 500

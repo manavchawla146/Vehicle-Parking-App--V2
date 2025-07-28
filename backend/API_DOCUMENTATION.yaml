@@ -1,0 +1,969 @@
+openapi: 3.0.0
+info:
+  title: Parking Management System API
+  description: RESTful API for parking lot management, user operations, and admin functions
+  version: 1.0.0
+  contact:
+    name: Parking App Team
+    email: support@parkingapp.com
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://api.parkingapp.com
+    description: Production server
+
+security:
+  - sessionAuth: []
+
+paths:
+  # ========================================
+  # AUTHENTICATION ENDPOINTS
+  # ========================================
+  /api/signup:
+    post:
+      tags:
+        - Authentication
+      summary: User registration
+      description: Register a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                  description: User's display name
+                email:
+                  type: string
+                  format: email
+                  description: User's email address
+                password:
+                  type: string
+                  description: User's password
+                address:
+                  type: string
+                  description: User's address
+                pincode:
+                  type: string
+                  description: User's pin code
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user_id:
+                    type: integer
+        '400':
+          description: Invalid input data
+        '409':
+          description: User already exists
+
+  /api/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user and create session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user_id:
+                    type: integer
+                  role:
+                    type: string
+        '401':
+          description: Invalid credentials
+        '403':
+          description: User is banned
+
+  /api/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User logout
+      description: End user session
+      responses:
+        '200':
+          description: Logout successful
+        '401':
+          description: Not logged in
+
+  /api/session:
+    get:
+      tags:
+        - Authentication
+      summary: Check session status
+      description: Get current user session information
+      responses:
+        '200':
+          description: Session valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: integer
+                  role:
+                    type: string
+        '401':
+          description: No valid session
+
+  # ========================================
+  # USER PROFILE ENDPOINTS
+  # ========================================
+  /api/profile:
+    get:
+      tags:
+        - User Profile
+      summary: Get user profile
+      description: Retrieve current user's profile information
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  email:
+                    type: string
+                  address:
+                    type: string
+                  pincode:
+                    type: string
+        '401':
+          description: Not logged in
+
+    post:
+      tags:
+        - User Profile
+      summary: Update user profile
+      description: Update current user's profile information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                address:
+                  type: string
+                pincode:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated successfully
+        '401':
+          description: Not logged in
+
+  # ========================================
+  # PARKING SEARCH ENDPOINTS
+  # ========================================
+  /api/parking/search:
+    get:
+      tags:
+        - Parking Search
+      summary: Search parking lots
+      description: Search parking lots by location or pin code
+      parameters:
+        - name: query
+          in: query
+          description: Search term (location or pin code)
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    primeLocation:
+                      type: string
+                    address:
+                      type: string
+                    pinCode:
+                      type: string
+                    number_of_spots:
+                      type: integer
+                    occupiedSpots:
+                      type: array
+                      items:
+                        type: integer
+                    pricePerHour:
+                      type: number
+                    availability:
+                      type: integer
+        '401':
+          description: Not logged in
+
+  /api/parking/lot/{lot_id}/spots:
+    get:
+      tags:
+        - Parking Spots
+      summary: Get parking spots for a lot
+      description: Retrieve all parking spots for a specific lot
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Spots retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spots:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        lot_name:
+                          type: string
+                        username:
+                          type: string
+                        price:
+                          type: number
+                        status:
+                          type: string
+                          enum: [A, O]
+                        vehicle_id:
+                          type: string
+                        occupation_time:
+                          type: string
+                          format: date-time
+        '404':
+          description: Lot not found
+
+  # ========================================
+  # PARKING RESERVATION ENDPOINTS
+  # ========================================
+  /api/parking/reserve:
+    post:
+      tags:
+        - Parking Reservation
+      summary: Reserve parking spot
+      description: Book a parking spot in a specific lot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - lotId
+                - spotId
+                - vehicleNo
+              properties:
+                lotId:
+                  type: integer
+                spotId:
+                  type: integer
+                vehicleNo:
+                  type: string
+      responses:
+        '200':
+          description: Parking reserved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  reservationId:
+                    type: integer
+                  spotId:
+                    type: integer
+        '400':
+          description: Invalid or unavailable spot
+        '401':
+          description: Not logged in
+
+  /api/user/release-parking:
+    post:
+      tags:
+        - Parking Reservation
+      summary: Release parking spot
+      description: End parking session and calculate cost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - spotId
+              properties:
+                spotId:
+                  type: integer
+      responses:
+        '200':
+          description: Parking released successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  cost:
+                    type: number
+                  duration:
+                    type: number
+        '400':
+          description: Spot not occupied or invalid
+        '401':
+          description: Not logged in
+        '403':
+          description: Not your parking spot
+
+  # ========================================
+  # USER PARKING HISTORY ENDPOINTS
+  # ========================================
+  /api/user/parking-history:
+    get:
+      tags:
+        - User History
+      summary: Get parking history
+      description: Retrieve user's parking history (active and completed sessions)
+      responses:
+        '200':
+          description: History retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum: [active, parked_out]
+                    id:
+                      type: integer
+                    location:
+                      type: string
+                    vehicle_no:
+                      type: string
+                    timestamp:
+                      type: string
+                      format: date-time
+                    releasing_time:
+                      type: string
+                      format: date-time
+                    total_cost:
+                      type: number
+                    slot_number:
+                      type: integer
+        '401':
+          description: Not logged in
+
+  /api/user/parking-status-summary:
+    get:
+      tags:
+        - User Summary
+      summary: Get parking status summary
+      description: Get user's parking statistics and summary data
+      responses:
+        '200':
+          description: Summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_sessions:
+                    type: integer
+                  active_sessions:
+                    type: integer
+                  total_cost:
+                    type: number
+                  average_duration:
+                    type: number
+                  favorite_lot:
+                    type: string
+        '401':
+          description: Not logged in
+
+  /api/user/notifications:
+    get:
+      tags:
+        - User Notifications
+      summary: Get user notifications
+      description: Retrieve notifications for unused parking lots
+      responses:
+        '200':
+          description: Notifications retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        message:
+                          type: string
+                        timestamp:
+                          type: string
+                          format: date-time
+                  unread_count:
+                    type: integer
+        '401':
+          description: Not logged in
+
+  # ========================================
+  # ADMIN PARKING LOT MANAGEMENT
+  # ========================================
+  /api/admin/lots:
+    post:
+      tags:
+        - Admin - Lot Management
+      summary: Add new parking lot
+      description: Create a new parking lot with specified spots
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - primeLocation
+                - address
+                - pinCode
+                - pricePerHour
+                - maxSpots
+              properties:
+                primeLocation:
+                  type: string
+                address:
+                  type: string
+                pinCode:
+                  type: string
+                pricePerHour:
+                  type: number
+                maxSpots:
+                  type: integer
+      responses:
+        '201':
+          description: Lot added successfully
+        '400':
+          description: Invalid input data
+        '403':
+          description: Admin access required
+
+    get:
+      tags:
+        - Admin - Lot Management
+      summary: Get all parking lots
+      description: Retrieve all parking lots with occupancy information
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Lots retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    primeLocation:
+                      type: string
+                    address:
+                      type: string
+                    pinCode:
+                      type: string
+                    pricePerHour:
+                      type: number
+                    total:
+                      type: integer
+                    occupied:
+                      type: integer
+                    available:
+                      type: integer
+        '403':
+          description: Admin access required
+
+  /api/admin/lots/{lot_id}:
+    delete:
+      tags:
+        - Admin - Lot Management
+      summary: Delete parking lot
+      description: Remove a parking lot (only if no spots are occupied)
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lot deleted successfully
+        '400':
+          description: Cannot delete lot with occupied spots
+        '403':
+          description: Admin access required
+        '404':
+          description: Lot not found
+
+    put:
+      tags:
+        - Admin - Lot Management
+      summary: Update parking lot
+      description: Modify parking lot information
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                primeLocation:
+                  type: string
+                address:
+                  type: string
+                pinCode:
+                  type: string
+                pricePerHour:
+                  type: number
+      responses:
+        '200':
+          description: Lot updated successfully
+        '403':
+          description: Admin access required
+        '404':
+          description: Lot not found
+
+  /api/admin/lots/{lot_id}/slots:
+    get:
+      tags:
+        - Admin - Slot Management
+      summary: Get slots for a lot
+      description: Retrieve all parking spots for a specific lot
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Slots retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    slot_number:
+                      type: integer
+                    status:
+                      type: string
+                      enum: [A, O]
+                    vehicle_id:
+                      type: string
+                    occupation_time:
+                      type: string
+                      format: date-time
+                    username:
+                      type: string
+        '404':
+          description: Lot not found
+
+    post:
+      tags:
+        - Admin - Slot Management
+      summary: Add slot to lot
+      description: Add a new parking spot to a lot
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: Slot added successfully
+        '403':
+          description: Admin access required
+        '404':
+          description: Lot not found
+
+  /api/admin/lots/{lot_id}/slots/{slot_number}:
+    delete:
+      tags:
+        - Admin - Slot Management
+      summary: Delete slot
+      description: Remove a parking spot from a lot
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: slot_number
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Slot deleted successfully
+        '400':
+          description: Cannot delete occupied slot
+        '403':
+          description: Admin access required
+        '404':
+          description: Slot not found
+
+  /api/admin/lots/{lot_id}/slots/{slot_number}/occupy:
+    post:
+      tags:
+        - Admin - Slot Management
+      summary: Occupy slot manually
+      description: Manually mark a slot as occupied (admin only)
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: slot_number
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - vehicle_id
+              properties:
+                vehicle_id:
+                  type: string
+      responses:
+        '200':
+          description: Slot occupied successfully
+        '400':
+          description: Slot already occupied
+        '403':
+          description: Admin access required
+        '404':
+          description: Slot not found
+
+  # ========================================
+  # ADMIN USER MANAGEMENT
+  # ========================================
+  /api/admin/users:
+    get:
+      tags:
+        - Admin - User Management
+      summary: Get all users
+      description: Retrieve all users (excluding admin)
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    email:
+                      type: string
+                    address:
+                      type: string
+                    pincode:
+                      type: string
+                    banned:
+                      type: boolean
+        '403':
+          description: Admin access required
+
+  /api/admin/users/{user_id}/ban:
+    post:
+      tags:
+        - Admin - User Management
+      summary: Ban user
+      description: Ban a user account
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User banned successfully
+        '403':
+          description: Admin access required
+        '404':
+          description: User not found
+
+  /api/admin/users/{user_id}/unban:
+    post:
+      tags:
+        - Admin - User Management
+      summary: Unban user
+      description: Unban a user account
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User unbanned successfully
+        '403':
+          description: Admin access required
+        '404':
+          description: User not found
+
+  # ========================================
+  # ADMIN ANALYTICS & REPORTS
+  # ========================================
+  /api/admin/summary:
+    get:
+      tags:
+        - Admin - Analytics
+      summary: Get admin summary
+      description: Retrieve dashboard summary data for admin
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_lots:
+                    type: integer
+                  total_spots:
+                    type: integer
+                  occupied_spots:
+                    type: integer
+                  total_users:
+                    type: integer
+                  total_revenue:
+                    type: number
+        '403':
+          description: Admin access required
+
+  /api/admin/occupancy-trend:
+    get:
+      tags:
+        - Admin - Analytics
+      summary: Get occupancy trend
+      description: Retrieve parking occupancy trend data
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Trend data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dates:
+                    type: array
+                    items:
+                      type: string
+                  occupancy:
+                    type: array
+                    items:
+                      type: number
+        '403':
+          description: Admin access required
+
+  # ========================================
+  # ADMIN CACHE MANAGEMENT
+  # ========================================
+  /api/admin/cache/clear:
+    post:
+      tags:
+        - Admin - Cache Management
+      summary: Clear all cache
+      description: Clear all cached data
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Cache cleared successfully
+        '403':
+          description: Admin access required
+
+  /api/admin/cache/status:
+    get:
+      tags:
+        - Admin - Cache Management
+      summary: Get cache status
+      description: Retrieve cache configuration and status
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Cache status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cache_type:
+                    type: string
+                  cache_url:
+                    type: string
+                  default_timeout:
+                    type: integer
+                  status:
+                    type: string
+        '403':
+          description: Admin access required
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: session
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
+    Success:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Success message
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: User Profile
+    description: User profile management
+  - name: Parking Search
+    description: Search and browse parking lots
+  - name: Parking Spots
+    description: Parking spot information
+  - name: Parking Reservation
+    description: Book and release parking spots
+  - name: User History
+    description: User parking history
+  - name: User Summary
+    description: User parking statistics
+  - name: User Notifications
+    description: User notifications and alerts
+  - name: Admin - Lot Management
+    description: Parking lot management for admins
+  - name: Admin - Slot Management
+    description: Parking slot management for admins
+  - name: Admin - User Management
+    description: User management for admins
+  - name: Admin - Analytics
+    description: Analytics and reporting for admins
+  - name: Admin - Cache Management
+    description: Cache management for admins 

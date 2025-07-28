@@ -45,7 +45,14 @@ export default {
     };
   },
   async mounted() {
+    console.log('🚀 Admin Summary component mounted');
     try {
+      // Test if chart elements exist
+      console.log('🎯 Chart elements check:');
+      console.log('  chart1:', !!document.getElementById('chart1'));
+      console.log('  chart2:', !!document.getElementById('chart2'));
+      console.log('  chart3:', !!document.getElementById('chart3'));
+      
       // Fetch lots data
       const lotsRes = await fetch('/api/admin/lots');
       const lots = await lotsRes.json();
@@ -56,6 +63,7 @@ export default {
       const occupied = lots.reduce((sum, lot) => sum + lot.occupied, 0);
 
       // Chart 1: Occupancy by Parking Lot
+      console.log('📊 Creating Chart 1 (Bar Chart)');
       this.chart1 = new Chart(document.getElementById('chart1'), {
         type: 'bar',
         data: {
@@ -90,6 +98,7 @@ export default {
       });
 
       // Chart 2: Overall Parking Utilization
+      console.log('📊 Creating Chart 2 (Pie Chart)');
       this.chart2 = new Chart(document.getElementById('chart2'), {
         type: 'pie',
         data: {
@@ -115,7 +124,10 @@ export default {
 
       // Fetch occupancy trend data
       try {
+        console.log('🔄 Loading trend data...');
         const trendRes = await fetch('/api/admin/occupancy-trend');
+        console.log('📡 API Response:', { status: trendRes.status, ok: trendRes.ok });
+        
         if (!trendRes.ok) {
           throw new Error(`HTTP error! status: ${trendRes.status}`);
         }
@@ -125,10 +137,19 @@ export default {
         const trendDates = trend.dates || [];
         const trendCounts = trend.occupied_counts || [];
         
-        console.log('Trend data received:', { dates: trendDates, counts: trendCounts });
+        console.log('📊 Trend data received:', { dates: trendDates, counts: trendCounts });
+        
+        // Check if chart element exists
+        const chartElement = document.getElementById('chart3');
+        console.log('🎯 Chart element found:', !!chartElement);
+        
+        if (!chartElement) {
+          throw new Error('Chart element not found');
+        }
         
         // Chart 3: Daily Occupancy Trend
-        this.chart3 = new Chart(document.getElementById('chart3'), {
+        console.log('📊 Creating Chart 3 (Line Chart)');
+        this.chart3 = new Chart(chartElement, {
           type: 'line',
           data: {
             labels: trendDates,
@@ -178,60 +199,72 @@ export default {
           }
         });
       } catch (error) {
-        console.error('Error loading trend data:', error);
-        // Create chart with sample data if API fails
-        const sampleDates = ['2025-07-20', '2025-07-21', '2025-07-22', '2025-07-23', '2025-07-24', '2025-07-25', '2025-07-26'];
-        const sampleCounts = [0, 0, 0, 0, 0, 0, 3]; // Show today's 3 bookings
+        console.error('❌ Error loading trend data:', error);
         
-        this.chart3 = new Chart(document.getElementById('chart3'), {
-          type: 'line',
-          data: {
-            labels: sampleDates,
-            datasets: [{
-              label: 'Bookings per Day (Sample)',
-              data: sampleCounts,
-              fill: false,
-              borderColor: '#ef5350',
-              tension: 0.1,
-              pointBackgroundColor: '#e57373',
-              pointRadius: 6,
-              pointHoverRadius: 8
-            }]
-          },
-          options: {
-            responsive: true,
-            scales: {
-              y: {
-                beginAtZero: true,
-                title: {
-                  display: true,
-                  text: 'Number of Bookings'
-                },
-                ticks: {
-                  stepSize: 1
-                }
-              },
-              x: {
-                title: {
-                  display: true,
-                  text: 'Date'
-                }
-              }
-            },
-            plugins: {
-              legend: {
-                labels: {
-                  color: '#333'
-                }
-              },
-              tooltip: {
-                mode: 'index',
-                intersect: false
-              }
-            },
-            maintainAspectRatio: false
+        // Create chart with empty data if API fails
+        const chartElement = document.getElementById('chart3');
+        if (chartElement) {
+          console.log('🔄 Creating chart with empty data due to API error');
+          
+          // Generate last 7 days as fallback
+          const today = new Date();
+          const dates = [];
+          for (let i = 6; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(date.getDate() - i);
+            dates.push(date.toISOString().split('T')[0]);
           }
-        });
+          
+          this.chart3 = new Chart(chartElement, {
+            type: 'line',
+            data: {
+              labels: dates,
+              datasets: [{
+                label: 'Bookings per Day (No Data)',
+                data: new Array(7).fill(0),
+                fill: false,
+                borderColor: '#ccc',
+                tension: 0.1,
+                pointBackgroundColor: '#999',
+                pointRadius: 6,
+                pointHoverRadius: 8
+              }]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  title: {
+                    display: true,
+                    text: 'Number of Bookings'
+                  },
+                  ticks: {
+                    stepSize: 1
+                  }
+                },
+                x: {
+                  title: {
+                    display: true,
+                    text: 'Date'
+                  }
+                }
+              },
+              plugins: {
+                legend: {
+                  labels: {
+                    color: '#333'
+                  }
+                },
+                tooltip: {
+                  mode: 'index',
+                  intersect: false
+                }
+              },
+              maintainAspectRatio: false
+            }
+          });
+        }
       }
       this.loading = false;
     } catch (err) {
@@ -256,6 +289,11 @@ export default {
   min-height: 250px;
   max-height: 300px;
   margin-bottom: 20px;
+  position: relative;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 15px;
 }
 
 canvas {
@@ -263,6 +301,7 @@ canvas {
   height: 250px !important;
   max-width: 550px;
   margin: 0 auto;
+  display: block !important;
 }
 
 .summary-card {

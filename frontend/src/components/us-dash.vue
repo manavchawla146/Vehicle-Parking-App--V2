@@ -335,10 +335,16 @@ export default {
       console.log('Duration in milliseconds:', durationMs);
       console.log('Duration in hours:', durationHours);
       
-      // Use dynamic price from the lot
-      const pricePerHour = history.pricePerHour || 5; // Fallback to $5 if not available
+      // Use dynamic price from the lot - this should come from the backend now
+      if (!history.pricePerHour) {
+        console.error('Price per hour not available for spot:', history.id);
+        alert('Error: Price information not available. Please contact support.');
+        return;
+      }
       
-      // Calculate cost with minimum charge of 1 hour
+      const pricePerHour = history.pricePerHour;
+      
+      // Calculate cost with minimum charge of 1 hour (the hourly rate)
       let totalCost = Math.max(durationHours * pricePerHour, pricePerHour);
       totalCost = totalCost.toFixed(2);
       
@@ -380,7 +386,7 @@ export default {
     },
     async confirmRelease() {
       try {
-        const response = await fetch('/api/parking/release', {
+        const response = await fetch('/api/user/release-parking', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
