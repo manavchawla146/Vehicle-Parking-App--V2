@@ -20,13 +20,13 @@ def connect_redis():
         client.ping()
         return client
     except Exception as e:
-        print(f"❌ Redis connection failed: {e}")
+        print(f"Redis connection failed: {e}")
         return None
 
 def show_help():
     """Show available commands"""
     print("""
-🚀 Cache Management Commands
+Cache Management Commands
 ============================
 
 Commands:
@@ -47,7 +47,7 @@ Examples:
 
 def show_status():
     """Show cache status"""
-    print("📊 Cache Status")
+    print("Cache Status")
     print("=" * 40)
     
     # Check Redis connection
@@ -55,7 +55,7 @@ def show_status():
     if not redis_client:
         return
     
-    print(f"Redis Status: ✅ Connected")
+    print(f"Redis Status: Connected")
     print(f"Redis URL: {REDIS_URL}")
     
     # Check Flask app
@@ -67,13 +67,13 @@ def show_status():
             print(f"Default Timeout: {status.get('default_timeout')}s")
             print(f"Status: {status.get('status')}")
         else:
-            print("Flask App: ❌ Not responding")
+            print("Flask App: Not responding")
     except Exception as e:
-        print(f"Flask App: ❌ Error - {e}")
+        print(f"Flask App: Error - {e}")
 
 def show_keys():
     """Show all cache keys"""
-    print("🗂️  Cache Keys")
+    print("Cache Keys")
     print("=" * 40)
     
     redis_client = connect_redis()
@@ -99,7 +99,7 @@ def show_keys():
             print()
             
     except Exception as e:
-        print(f"❌ Error reading keys: {e}")
+        print(f"Error reading keys: {e}")
 
 def show_stats():
     """Show Redis statistics"""
@@ -125,7 +125,7 @@ def show_stats():
             print(f"{key}: {value}")
             
     except Exception as e:
-        print(f"❌ Error reading stats: {e}")
+        print(f"Error reading stats: {e}")
 
 def run_test():
     """Run performance test"""
@@ -148,10 +148,10 @@ def run_test():
         try:
             response1 = requests.get(f"{BASE_URL}{endpoint}", timeout=10)
             time1 = time.time() - start
-            status1 = "✅" if response1.status_code == 200 else "❌"
+            status1 = "Success" if response1.status_code == 200 else "Failed"
             print(f"  Request 1: {time1:.3f}s {status1}")
         except Exception as e:
-            print(f"  Request 1: ❌ Error - {e}")
+            print(f"  Request 1: Error - {e}")
             continue
         
         # Second request (should be faster if cached)
@@ -159,32 +159,32 @@ def run_test():
         try:
             response2 = requests.get(f"{BASE_URL}{endpoint}", timeout=10)
             time2 = time.time() - start
-            status2 = "✅" if response2.status_code == 200 else "❌"
+            status2 = "Success" if response2.status_code == 200 else "Failed"
             print(f"  Request 2: {time2:.3f}s {status2}")
         except Exception as e:
-            print(f"  Request 2: ❌ Error - {e}")
+            print(f"  Request 2: Error - {e}")
             continue
         
         # Check if cache is working
         if time2 < time1 * 0.8:
             improvement = ((time1 - time2) / time1) * 100
-            print(f"  Cache: ✅ Working ({improvement:.1f}% improvement)")
+            print(f"  Cache: Working ({improvement:.1f}% improvement)")
         else:
-            print(f"  Cache: ⚠️  May not be working")
+            print(f"  Cache: May not be working")
 
 def clear_cache():
     """Clear all cache"""
-    print("🗑️  Clearing Cache")
+    print("Clearing Cache")
     print("=" * 40)
     
     try:
         response = requests.post(f"{BASE_URL}/api/admin/cache/clear", timeout=10)
         if response.status_code == 200:
-            print("✅ Cache cleared successfully")
+            print("Cache cleared successfully")
         else:
-            print(f"❌ Failed to clear cache: {response.status_code}")
+            print(f"Failed to clear cache: {response.status_code}")
     except Exception as e:
-        print(f"❌ Error clearing cache: {e}")
+        print(f"Error clearing cache: {e}")
 
 def monitor_cache():
     """Real-time cache monitoring"""
@@ -230,7 +230,7 @@ def main():
     elif command == "help":
         show_help()
     else:
-        print(f"❌ Unknown command: {command}")
+        print(f"Unknown command: {command}")
         show_help()
 
 if __name__ == "__main__":

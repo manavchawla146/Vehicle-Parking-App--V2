@@ -59,11 +59,11 @@ def send_email_to_all_users(subject, message):
                     server.quit()
                     
                     success_count += 1
-                    logger.info(f"✅ Notification sent to {user.email}")
+                    logger.info(f"Notification sent to {user.email}")
                     
                 except Exception as e:
                     failed_count += 1
-                    logger.error(f"❌ Failed to send notification to {user.email}: {e}")
+                    logger.error(f"Failed to send notification to {user.email}: {e}")
             else:
                 logger.warning(f"No email address for user: {user.username}")
                 failed_count += 1
@@ -73,7 +73,7 @@ def send_email_to_all_users(subject, message):
         return result
         
     except Exception as e:
-        logger.error(f"❌ Error sending notifications: {e}")
+        logger.error(f"Error sending notifications: {e}")
         return f"Error: {e}"
 
 @celery.task(name='jobs.reports.send_lot_addition_notification')
@@ -116,7 +116,7 @@ Parking App Team
         return result
         
     except Exception as e:
-        error_msg = f"❌ Error in lot addition notification: {e}"
+        error_msg = f"Error in lot addition notification: {e}"
         logger.error(error_msg)
         return error_msg
 
@@ -126,7 +126,7 @@ def send_lot_deletion_notification(lot_data):
     try:
         logger.info("📧 Starting lot deletion notification...")
         
-        subject = "⚠️ Parking Lot Removed - Parking App"
+        subject = "Parking Lot Removed - Parking App"
         message = f"""
 Hello from Parking App!
 
@@ -137,7 +137,7 @@ Important Update: A parking lot has been removed from our system.
 • Address: {lot_data['address']}
 • Pin Code: {lot_data['pinCode']}
 
-⚠️ Important Information:
+Important Information:
 • This location is no longer available for parking
 • Please use alternative parking locations
 • Your existing bookings at this location may be affected
@@ -160,7 +160,7 @@ Parking App Team
         return result
         
     except Exception as e:
-        error_msg = f"❌ Error in lot deletion notification: {e}"
+        error_msg = f"Error in lot deletion notification: {e}"
         logger.error(error_msg)
         return error_msg
 
@@ -168,7 +168,7 @@ Parking App Team
 def generate_monthly_report(user_id=None):
     """Generate monthly parking usage report"""
     try:
-        print("📊 Starting monthly report generation...")
+        print("Starting monthly report generation...")
         
         # Create temporary file for PDF
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
@@ -330,11 +330,11 @@ def generate_monthly_report(user_id=None):
         # Build PDF
         doc.build(story)
         
-        print(f"✅ PDF report generated successfully: {pdf_path}")
+        print(f"PDF report generated successfully: {pdf_path}")
         return pdf_path
         
     except Exception as e:
-        print(f"❌ Error generating PDF report: {e}")
+        print(f"Error generating PDF report: {e}")
         import traceback
         print(f"Traceback: {traceback.format_exc()}")
         return None
@@ -439,7 +439,7 @@ def get_parking_usage_data(user_id=None):
         }
         
     except Exception as e:
-        print(f"❌ Error getting parking usage data: {e}")
+        print(f"Error getting parking usage data: {e}")
         return {
             'total_sessions': 0,
             'total_revenue': 0.0,

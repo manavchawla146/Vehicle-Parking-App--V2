@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, session
-from .models import db, ParkingLot, User, ParkingSpot, LotChangeLog
+from .models import db, ParkingLot, User, ParkingSpot
 from datetime import datetime, timezone
 import logging
 from sqlalchemy import func
@@ -19,17 +19,17 @@ def invalidate_lots_cache():
     try:
         cache.delete('admin_lots')
         cache.delete('admin_lots_summary')
-        logger.info("✅ Lots cache invalidated")
+        logger.info(" Lots cache invalidated")
     except Exception as e:
-        logger.error(f"❌ Failed to invalidate lots cache: {e}")
+        logger.error(f" Failed to invalidate lots cache: {e}")
 
 def invalidate_users_cache():
     """Invalidate all users-related cache"""
     try:
         cache.delete('admin_users')
-        logger.info("✅ Users cache invalidated")
+        logger.info(" Users cache invalidated")
     except Exception as e:
-        logger.error(f"❌ Failed to invalidate users cache: {e}")
+        logger.error(f" Failed to invalidate users cache: {e}")
 
 @admin_bp.route('/cache/clear', methods=['POST'])
 def clear_cache():
@@ -40,10 +40,10 @@ def clear_cache():
     try:
         # Clear all cache keys
         cache.clear()
-        logger.info("🗑️ All cache cleared by admin")
+        logger.info(" All cache cleared by admin")
         return jsonify({'message': 'Cache cleared successfully'}), 200
     except Exception as e:
-        logger.error(f"❌ Failed to clear cache: {e}")
+        logger.error(f" Failed to clear cache: {e}")
         return jsonify({'error': 'Failed to clear cache'}), 500
 
 
@@ -64,7 +64,7 @@ def get_cache_status():
         }
         return jsonify(status), 200
     except Exception as e:
-        logger.error(f"❌ Failed to get cache status: {e}")
+        logger.error(f" Failed to get cache status: {e}")
         return jsonify({'error': 'Failed to get cache status'}), 500
 
 @admin_bp.route('/lots', methods=['POST'])
@@ -100,9 +100,9 @@ def add_lot():
             from jobs.reports import send_lot_addition_notification
             # Schedule the task to run after 5 minutes (300 seconds)
             send_lot_addition_notification.apply_async(args=[data], countdown=60)
-            logger.info("📧 Lot addition notification task scheduled for 5 minutes from now")
+            logger.info(" Lot addition notification task scheduled for 5 minutes from now")
         except Exception as e:
-            logger.error(f"❌ Failed to schedule lot addition notification: {e}")
+            logger.error(f" Failed to schedule lot addition notification: {e}")
         
         return jsonify({'message': 'Lot added successfully', 'id': lot.id}), 201
     except KeyError as e:
@@ -135,7 +135,7 @@ def get_lots():
             'occupied': occupied,
             'available': total - occupied
         })
-    logger.info(f"📊 Fetched {len(result)} lots from cache/database")
+    logger.info(f"Fetched {len(result)} lots from cache/database")
     return jsonify(result)
 
 @admin_bp.route('/lots/<int:lot_id>', methods=['DELETE'])
@@ -160,9 +160,9 @@ def delete_lot(lot_id):
     try:
         from jobs.reports import send_lot_deletion_notification
         send_lot_deletion_notification.apply_async(args=[lot_data], countdown=60)
-        logger.info("📧 Lot deletion notification task scheduled for 5 minutes from now")
+        logger.info(" Lot deletion notification task scheduled for 5 minutes from now")
     except Exception as e:
-        logger.error(f"❌ Failed to schedule lot deletion notification: {e}")
+        logger.error(f" Failed to schedule lot deletion notification: {e}")
 
     db.session.delete(lot)
     db.session.commit()
@@ -302,7 +302,7 @@ def get_lot_slots(lot_id):
         'occupation_time': spot.occupation_time.isoformat() if spot.occupation_time else None,
         'username': spot.username
     } for spot in spots]
-    logger.info(f"📊 Fetched {len(result)} slots for lot {lot_id} from cache/database")
+    logger.info(f"Fetched {len(result)} slots for lot {lot_id} from cache/database")
     return jsonify(result)
 
 @admin_bp.route('/users', methods=['GET'])
@@ -318,7 +318,7 @@ def get_users():
         'pincode': user.pincode,
         'status': 'Banned' if user.banned else 'Active'
     } for user in users]
-    logger.info(f"📊 Fetched {len(result)} users from cache/database")
+    logger.info(f"Fetched {len(result)} users from cache/database")
     return jsonify(result)
 
 @admin_bp.route('/users/<int:user_id>/ban', methods=['POST'])
@@ -394,7 +394,7 @@ def get_admin_summary():
             'daily_trend': daily_trend
         }
         
-        logger.info(f"📊 Generated admin summary from cache/database")
+        logger.info(f"Generated admin summary from cache/database")
         return jsonify(summary)
         
     except Exception as e:

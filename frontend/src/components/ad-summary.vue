@@ -45,7 +45,7 @@ export default {
     };
   },
   async mounted() {
-    console.log('🚀 Admin Summary component mounted');
+    console.log('Admin Summary component mounted');
     try {
       // Test if chart elements exist
       console.log('🎯 Chart elements check:');
@@ -63,7 +63,7 @@ export default {
       const occupied = lots.reduce((sum, lot) => sum + lot.occupied, 0);
 
       // Chart 1: Occupancy by Parking Lot
-      console.log('📊 Creating Chart 1 (Bar Chart)');
+      console.log('Creating Chart 1 (Bar Chart)');
       this.chart1 = new Chart(document.getElementById('chart1'), {
         type: 'bar',
         data: {
@@ -98,7 +98,7 @@ export default {
       });
 
       // Chart 2: Overall Parking Utilization
-      console.log('📊 Creating Chart 2 (Pie Chart)');
+      console.log('Creating Chart 2 (Pie Chart)');
       this.chart2 = new Chart(document.getElementById('chart2'), {
         type: 'pie',
         data: {
@@ -124,7 +124,7 @@ export default {
 
       // Fetch occupancy trend data
       try {
-        console.log('🔄 Loading trend data...');
+        console.log('Loading trend data...');
         const trendRes = await fetch('/api/admin/occupancy-trend');
         console.log('📡 API Response:', { status: trendRes.status, ok: trendRes.ok });
         
@@ -137,7 +137,7 @@ export default {
         const trendDates = trend.dates || [];
         const trendCounts = trend.occupied_counts || [];
         
-        console.log('📊 Trend data received:', { dates: trendDates, counts: trendCounts });
+        console.log('Trend data received:', { dates: trendDates, counts: trendCounts });
         
         // Check if chart element exists
         const chartElement = document.getElementById('chart3');
@@ -148,7 +148,7 @@ export default {
         }
         
         // Chart 3: Daily Occupancy Trend
-        console.log('📊 Creating Chart 3 (Line Chart)');
+        console.log('Creating Chart 3 (Line Chart)');
         this.chart3 = new Chart(chartElement, {
           type: 'line',
           data: {
@@ -199,12 +199,12 @@ export default {
           }
         });
       } catch (error) {
-        console.error('❌ Error loading trend data:', error);
+        console.error('Error loading trend data:', error);
         
         // Create chart with empty data if API fails
         const chartElement = document.getElementById('chart3');
         if (chartElement) {
-          console.log('🔄 Creating chart with empty data due to API error');
+          console.log('Creating chart with empty data due to API error');
           
           // Generate last 7 days as fallback
           const today = new Date();

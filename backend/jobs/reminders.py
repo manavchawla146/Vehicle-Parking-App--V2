@@ -58,11 +58,11 @@ def send_email_with_pdf(to_email, subject, message, pdf_path=None):
         server.sendmail(sender_email, to_email, text)
         server.quit()
         
-        logger.info(f"✅ Email sent successfully to {to_email}")
+        logger.info(f"Email sent successfully to {to_email}")
         return True
         
     except Exception as e:
-        logger.error(f"❌ Failed to send email to {to_email}: {e}")
+        logger.error(f"Failed to send email to {to_email}: {e}")
         return False
 
 def generate_user_pdf_report(user_id):
@@ -77,11 +77,11 @@ def generate_user_pdf_report(user_id):
             logger.info(f"📄 PDF generated for user {user_id}: {pdf_path}")
             return pdf_path
         else:
-            logger.error(f"❌ Failed to generate PDF for user {user_id}")
+            logger.error(f"Failed to generate PDF for user {user_id}")
             return None
             
     except Exception as e:
-        logger.error(f"❌ Error generating PDF for user {user_id}: {e}")
+        logger.error(f"Error generating PDF for user {user_id}: {e}")
         return None
 
 @celery.task(name='jobs.reminders.send_reminder')
@@ -111,7 +111,7 @@ This is your daily reminder along with your personalized parking report.
 
 📅 Report generated on: {current_time}
 
-📊 Your Report Includes:
+Your Report Includes:
 • Summary of your parking sessions
 • Total amount spent
 • Recent parking history
@@ -140,18 +140,18 @@ Parking App Team
                     # Send email with PDF attachment
                     if send_email_with_pdf(user.email, subject, message, pdf_path):
                         success_count += 1
-                        logger.info(f"✅ Email with PDF sent to {user.email}")
+                        logger.info(f"Email with PDF sent to {user.email}")
                     else:
                         failed_count += 1
-                        logger.error(f"❌ Failed to send email to {user.email}")
+                        logger.error(f"Failed to send email to {user.email}")
                     
                     # Clean up PDF file
                     if pdf_path and os.path.exists(pdf_path):
                         try:
                             os.unlink(pdf_path)
-                            logger.info(f"🗑️ Cleaned up PDF file: {pdf_path}")
+                            logger.info(f"Cleaned up PDF file: {pdf_path}")
                         except Exception as cleanup_error:
-                            logger.warning(f"⚠️ Failed to cleanup PDF file: {cleanup_error}")
+                            logger.warning(f"Failed to cleanup PDF file: {cleanup_error}")
                 else:
                     logger.warning(f"No email address for user: {user.username}")
                     failed_count += 1
@@ -161,6 +161,6 @@ Parking App Team
             return result
         
     except Exception as e:
-        error_msg = f"❌ Error in send_reminder task: {e}"
+        error_msg = f"Error in send_reminder task: {e}"
         logger.error(error_msg)
         return error_msg

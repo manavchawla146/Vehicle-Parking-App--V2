@@ -108,15 +108,3 @@ class ParkingUsageLog(db.Model):
     remarks = db.Column(db.String(256), nullable=True)
 
 
-class LotChangeLog(db.Model):
-    __tablename__ = 'lot_change_log'
-
-    id = db.Column(db.Integer, primary_key=True)
-    change_type = db.Column(db.String(20), nullable=False)  # 'added' or 'deleted'
-    lot_name = db.Column(db.String(100), nullable=False)
-    lot_address = db.Column(db.String(255), nullable=False)
-    lot_pin_code = db.Column(db.String(10), nullable=False)
-    number_of_spots = db.Column(db.Integer, nullable=False)
-    price_per_hour = db.Column(db.Float, nullable=False)
-    changed_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    changed_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # admin who made the change

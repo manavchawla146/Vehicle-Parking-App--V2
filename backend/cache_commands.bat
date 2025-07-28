@@ -1,5 +1,5 @@
 @echo off
-echo 🚀 Cache Management Commands
+echo Cache Management Commands
 echo ============================
 echo.
 echo Available commands:
@@ -25,17 +25,17 @@ if "%1"=="clear" goto clear
 if "%1"=="monitor" goto monitor
 if "%1"=="full" goto full
 
-echo ❌ Unknown command: %1
+echo Unknown command: %1
 echo Use: cache-status, cache-keys, cache-stats, cache-test, cache-clear, cache-monitor, cache-full
 goto end
 
 :status
-echo 📊 Checking cache status...
+echo Checking cache status...
 python cache_cli.py status
 goto end
 
 :keys
-echo 🗂️  Showing cache keys...
+echo Showing cache keys...
 python cache_cli.py keys
 goto end
 
@@ -50,7 +50,7 @@ python cache_cli.py test
 goto end
 
 :clear
-echo 🗑️  Clearing cache...
+echo Clearing cache...
 python cache_cli.py clear
 goto end
 
@@ -60,10 +60,10 @@ python cache_cli.py monitor
 goto end
 
 :full
-echo 🚀 Running comprehensive cache test...
+echo Running comprehensive cache test...
 python cache_monitor.py
 goto end
 
 :end
 echo.
-echo ✅ Command completed! 
+echo Command completed! 

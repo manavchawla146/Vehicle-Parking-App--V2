@@ -32,9 +32,9 @@ def invalidate_user_cache(user_id=None):
         ]
         for key in cache_keys:
             cache.delete(key)
-        logger.info(f"✅ User {user_id} cache invalidated")
+        logger.info(f"User {user_id} cache invalidated")
     except Exception as e:
-        logger.error(f"❌ Failed to invalidate user {user_id} cache: {e}")
+        logger.error(f"Failed to invalidate user {user_id} cache: {e}")
 
 @user_bp.route('/profile', methods=['GET'])
 def get_profile():
@@ -96,7 +96,7 @@ def search_parking():
         for lot in filtered_lots
     ]
     logger.debug(f"Search results: {result}")
-    logger.info(f"📊 Search results cached for query: '{query}'")
+    logger.info(f"Search results cached for query: '{query}'")
     return jsonify(result)
 
 @user_bp.route('/parking/lot/<int:lot_id>/spots', methods=['GET'])
@@ -127,7 +127,7 @@ def get_lot_spots(lot_id):
         } for spot in spots]
     }
     
-    logger.info(f"📊 Fetched {len(result['spots'])} spots for lot {lot_id} from cache/database")
+    logger.info(f"Fetched {len(result['spots'])} spots for lot {lot_id} from cache/database")
     return jsonify(result)
 
 @user_bp.route('/parking/reserve', methods=['POST'])
@@ -162,7 +162,7 @@ def reserve_parking():
     db.session.commit()
     
     # No cache invalidation needed since we removed caching
-    logger.info("✅ Reservation completed without caching")
+    logger.info("Reservation completed without caching")
     
     logger.info(f"Successfully reserved spot {spot.id} in lot {lot.id} for user {user_id} at {current_time}")
     return jsonify({'message': 'Parking reserved successfully', 'reservationId': reservation.id, 'spotId': spot.id})
@@ -212,7 +212,7 @@ def get_user_parking_history():
     # Combine result (no caching)
     result = active_rows + parked_out_rows
     
-    logger.info(f"📊 Fetched {len(result)} parking history records for user {user_id}")
+    logger.info(f"Fetched {len(result)} parking history records for user {user_id}")
     return jsonify(result)
 
 @user_bp.route('/user/parking-status-summary', methods=['GET'])
@@ -228,7 +228,7 @@ def get_user_parking_status_summary():
     # Try to get from cache first
     cached_result = cache.get(cache_key)
     if cached_result:
-        logger.info(f"📊 Returning cached parking summary for user {user_id}")
+        logger.info(f"Returning cached parking summary for user {user_id}")
         return jsonify(cached_result)
 
     # If not in cache, calculate from database
@@ -262,7 +262,7 @@ def get_user_parking_status_summary():
         # Cache the result
         cache.set(cache_key, summary, timeout=180)  # Cache for 3 minutes
         
-        logger.info(f"📊 Generated and cached parking summary for user {user_id}")
+        logger.info(f"Generated and cached parking summary for user {user_id}")
         return jsonify(summary)
         
     except Exception as e:
@@ -340,7 +340,7 @@ def release_parking():
         db.session.commit()
         
         # No cache invalidation needed since we removed caching
-        logger.info("✅ Release completed without caching")
+        logger.info("Release completed without caching")
         
         logger.info(f"Successfully released spot {spot_id} for user {user_id}")
         return jsonify({
@@ -436,7 +436,7 @@ def get_user_notifications():
             'unread_count': len([n for n in notifications if not n.get('read', False)])
         }
         
-        logger.info(f"📊 Generated {len(notifications)} notifications for user {user_id}")
+        logger.info(f"Generated {len(notifications)} notifications for user {user_id}")
         return jsonify(result)
         
     except Exception as e:
