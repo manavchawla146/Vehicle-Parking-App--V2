@@ -124,7 +124,7 @@ Parking App Team
 def send_lot_deletion_notification(lot_data):
     """Send email notification to all users when a parking lot is deleted"""
     try:
-        logger.info(" Starting lot deletion notification...")
+        logger.info("📧 Starting lot deletion notification...")
         
         subject = "Parking Lot Removed - Parking App"
         message = f"""
@@ -132,7 +132,7 @@ Hello from Parking App!
 
 Important Update: A parking lot has been removed from our system.
 
- Removed Parking Lot Details:
+📍 Removed Parking Lot Details:
 • Location: {lot_data['primeLocation']}
 • Address: {lot_data['address']}
 • Pin Code: {lot_data['pinCode']}
@@ -142,7 +142,7 @@ Important Information:
 • Please use alternative parking locations
 • Your existing bookings at this location may be affected
 
- Alternative Actions:
+🔍 Alternative Actions:
 • Search for other nearby parking locations
 • Check our updated parking lot list
 • Contact support if you have questions
@@ -156,7 +156,7 @@ Parking App Team
         """
         
         result = send_email_to_all_users(subject, message)
-        logger.info(f"Lot deletion notification completed: {result}")
+        logger.info(f"📧 Lot deletion notification completed: {result}")
         return result
         
     except Exception as e:

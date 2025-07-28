@@ -49,21 +49,17 @@ export default {
     };
   },
   async mounted() {
-    console.log('Component mounted - starting to load data');
     await this.loadParkingHistory();
   },
   methods: {
     async loadParkingHistory() {
-      console.log('loadParkingHistory called');
       try {
-        console.log('Fetching parking history...');
         const response = await fetch('/api/user/parking-history');
         const data = await response.json();
         this.parkingHistory = data;
         // Fetch parking status summary for the pie chart
         const statusRes = await fetch('/api/user/parking-status-summary');
         const statusData = await statusRes.json();
-        console.log('API Response:', statusData);
         this.createCharts(statusData);
         this.loading = false;
       } catch (err) {
@@ -172,14 +168,7 @@ export default {
       // Debug logging
       console.log('Chart 3 Data:', { active, completed, statusData });
       
-      // Check if chart element exists
-      const chartElement = document.getElementById('chart3');
-      if (!chartElement) {
-        console.error('Chart 3 element not found!');
-        return;
-      }
-      
-      this.chart3 = new Chart(chartElement, {
+      this.chart3 = new Chart(document.getElementById('chart3'), {
         type: 'pie',
         data: {
           labels: ['Active', 'Parked Out'],

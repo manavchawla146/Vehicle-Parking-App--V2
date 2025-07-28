@@ -233,7 +233,7 @@ def get_user_parking_status_summary():
 
     # If not in cache, calculate from database
     try:
-        # Get user's parking history
+        # Get user's parking history (completed sessions)
         usage_logs = ParkingUsageLog.query.filter_by(user_id=user_id).all()
         
         # Calculate summary statistics
@@ -250,11 +250,11 @@ def get_user_parking_status_summary():
         # Get active sessions (current bookings)
         active_reservations = Reservation.query.filter_by(user_id=user_id, leaving_timestamp=None).count()
         
-        # Get completed sessions (parked out sessions)
-        completed_sessions = len(usage_logs)  # All usage logs are completed sessions
+        # Completed sessions are from usage logs (already completed)
+        completed_sessions = total_sessions
         
         # Debug logging
-        logger.info(f"User {user_id} - Active reservations: {active_reservations}, Completed sessions: {completed_sessions}")
+        logger.info(f"User {user_id} summary: active={active_reservations}, completed={completed_sessions}, total_sessions={total_sessions}")
         
         summary = {
             'total_sessions': total_sessions,
@@ -263,12 +263,11 @@ def get_user_parking_status_summary():
             'locations_used': list(locations_used),
             'active': active_reservations,  # For frontend chart (current bookings)
             'completed': completed_sessions,  # For frontend chart (completed sessions)
-            'active_sessions': active_reservations,
-            'average_cost_per_session': round(total_cost / total_sessions, 2) if total_sessions > 0 else 0
         }
         
-        # Cache the result
-        cache.set(cache_key, summary, timeout=180)  # Cache for 3 minutes
+        # Clear any existing cache and set new result
+        cache.delete(cache_key)
+        cache.set(cache_key, summary, timeout=180)
         
         logger.info(f"Generated and cached parking summary for user {user_id}")
         return jsonify(summary)
