@@ -325,7 +325,7 @@ export default {
       // Check if parking time is valid
       if (isNaN(parkingTime.getTime())) {
         console.error('Invalid parking time:', history.timestamp);
-        alert('Error: Invalid parking time detected. Please contact support.');
+        console.warn('Invalid parking time detected. Please contact support.');
         return;
       }
       
@@ -338,7 +338,7 @@ export default {
       // Use dynamic price from the lot - this should come from the backend now
       if (!history.pricePerHour) {
         console.error('Price per hour not available for spot:', history.id);
-        alert('Error: Price information not available. Please contact support.');
+        console.warn('Price information not available. Please contact support.');
         return;
       }
       
@@ -403,11 +403,11 @@ export default {
           await this.fetchUserParkingHistory();
           this.closeReleaseModal();
         } else {
-          // Only show alert if the backend says it's an error
-          alert(data.error || "Failed to release parking spot!");
+          // Log error but don't show alert
+          console.error("Failed to release parking spot:", data.error);
         }
       } catch (error) {
-        alert("Network error releasing parking spot!");
+        console.error("Network error releasing parking spot:", error);
       }
     },
     async bookSlot(lotId) {
@@ -426,16 +426,16 @@ export default {
           this.showBookModal = true;
         } else {
           console.error("No available spots found despite availability:", lot.availability);
-          alert("No available spots found despite availability!");
+          console.warn("No available spots found despite availability!");
         }
       } else {
         console.warn("No available slots or lot not found:", lot);
-        alert("No available slots or lot not found!");
+        console.warn("No available slots or lot not found!");
       }
     },
     async confirmBook() {
       if (!this.bookModalData.vehicleNo.trim()) {
-        alert("Please enter a vehicle number!");
+        console.warn("Please enter a vehicle number!");
         return;
       }
       const userId = sessionStorage.getItem('user_id') || "USER123";
@@ -457,14 +457,14 @@ export default {
           this.closeBookModal();
           await this.fetchParkingLots(); // Refresh to update availability
           await this.fetchUserParkingHistory(); // Refresh parking history
-          alert("Booking successful!");
+          console.log("Booking successful!");
         } else {
           console.error("Booking failed:", data.error);
-          alert(data.error || "Failed to book slot");
+          console.error("Failed to book slot:", data.error);
         }
       } catch (err) {
         console.error("Server error during booking:", err.message);
-        alert("Server error: " + err.message);
+        console.error("Server error:", err.message);
       }
     },
     exportParkingHistory() {

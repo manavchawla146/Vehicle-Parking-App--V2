@@ -316,7 +316,7 @@ def get_users():
             'email': user.email,
         'address': user.address,
         'pincode': user.pincode,
-        'banned': user.banned
+        'status': 'Banned' if user.banned else 'Active'
     } for user in users]
     logger.info(f"📊 Fetched {len(result)} users from cache/database")
     return jsonify(result)
@@ -330,9 +330,10 @@ def ban_user(user_id):
     user.banned = True
     db.session.commit()
     
-    # No cache invalidation needed since we removed caching
+    # Invalidate users cache to reflect the change
+    invalidate_users_cache()
     
-    return jsonify({'message': 'User banned successfully'}), 200
+    return jsonify({'message': 'User banned successfully', 'status': 'Banned'}), 200
 
 @admin_bp.route('/users/<int:user_id>/unban', methods=['POST'])
 def unban_user(user_id):
@@ -343,9 +344,10 @@ def unban_user(user_id):
     user.banned = False
     db.session.commit()
     
-    # No cache invalidation needed since we removed caching
+    # Invalidate users cache to reflect the change
+    invalidate_users_cache()
     
-    return jsonify({'message': 'User unbanned successfully'}), 200
+    return jsonify({'message': 'User unbanned successfully', 'status': 'Active'}), 200
 
 @admin_bp.route('/summary', methods=['GET'])
 @cache.cached(timeout=15, key_prefix='admin_summary')  # Reduced to 15 seconds

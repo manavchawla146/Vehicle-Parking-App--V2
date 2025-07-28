@@ -105,10 +105,10 @@ export default {
             // Optionally reload user data from server
             this.loadUserData();
           } else {
-            alert(data.error || 'Failed to update profile');
+            console.error('Failed to update profile:', data.error);
           }
         } catch (err) {
-          alert('Server error');
+          console.error('Server error');
         }
       }
     },
@@ -133,17 +133,17 @@ export default {
     },
     validateForm() {
       if (!this.user.name || !this.user.email || !this.user.address || !this.user.pincode) {
-        alert('Please fill all fields');
+        console.warn('Please fill all fields');
         return false;
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(this.user.email)) {
-        alert('Please enter a valid email address');
+        console.warn('Please enter a valid email address');
         return false;
       }
       const pincodeRegex = /^\d{5,6}$/;
       if (!pincodeRegex.test(this.user.pincode)) {
-        alert('Pin Code must be a 5-6 digit number');
+        console.warn('Pin Code must be a 5-6 digit number');
         return false;
       }
       return true;

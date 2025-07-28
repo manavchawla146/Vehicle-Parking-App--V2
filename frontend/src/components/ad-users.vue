@@ -23,9 +23,16 @@
                 <td>{{ user.id }}</td>
                 <td>{{ user.name }}</td>
                 <td>{{ user.email }}</td>
-                <td>{{ user.status }}</td>
                 <td>
-                  <button class="action-btn ban-btn" @click="showBanModal(user)">
+                  <span :class="['status-badge', user.status === 'Active' ? 'active' : 'banned']">
+                    {{ user.status }}
+                  </span>
+                </td>
+                <td>
+                  <button 
+                    :class="['action-btn', user.status === 'Active' ? 'ban-btn' : 'unban-btn']" 
+                    @click="showBanModal(user)"
+                  >
                     {{ user.status === 'Active' ? 'Ban' : 'Unban' }}
                   </button>
                 </td>
@@ -107,6 +114,8 @@ export default {
           }
           this.closeModal();
           console.log(`${this.modalAction} successful for ${this.selectedUser.name}`);
+          // Refresh the users list to ensure consistency
+          await this.fetchUsers();
         } else {
           console.error('Failed to update user status:', data.error);
         }
@@ -186,6 +195,37 @@ export default {
 .ban-btn:hover {
   background: linear-gradient(90deg, #c0392b, #e74c3c);
   transform: translateY(-1px);
+}
+
+.unban-btn {
+  background: linear-gradient(90deg, #27ae60, #2ecc71);
+  color: white;
+}
+
+.unban-btn:hover {
+  background: linear-gradient(90deg, #2ecc71, #27ae60);
+  transform: translateY(-1px);
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.active {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-badge.banned {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
 }
 
 .confirm-btn {

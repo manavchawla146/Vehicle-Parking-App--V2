@@ -340,22 +340,22 @@ export default {
           this.closeEditModal();
           await this.fetchLots();
           console.log('Lot updated:', data);
-          alert('Parking lot updated successfully!');
+          console.log('Parking lot updated successfully!');
         } else {
-          alert(data.error || 'Failed to update lot');
+          console.error('Failed to update lot:', data.error);
         }
       } catch (err) {
-        alert('Server error: ' + err.message);
+        console.error('Server error:', err.message);
       }
     },
     validateEditForm() {
       const { primeLocation, address, pinCode, pricePerHour, total } = this.editLotData;
       if (!primeLocation.trim() || !address.trim() || !pinCode.trim() || !pricePerHour || !total) {
-        alert('Please fill all fields with valid data');
+        console.warn('Please fill all fields with valid data');
         return false;
       }
       if (isNaN(parseInt(pinCode)) || parseInt(pinCode) <= 0 || parseInt(pricePerHour) <= 0 || parseInt(total) <= 0) {
-        alert('Pin Code, Price, and Maximum Spots must be positive numbers');
+        console.warn('Pin Code, Price, and Maximum Spots must be positive numbers');
         return false;
       }
       return true;
@@ -375,11 +375,11 @@ export default {
           if (response.status === 400 && data.error === 'Cannot delete lot with occupied slots') {
             this.deletionRestrictionModalVisible = true;
           } else {
-            alert(data.error || 'Failed to delete lot');
+            console.error('Failed to delete lot:', data.error);
           }
         }
       } catch (err) {
-        alert('Server error');
+        console.error('Server error');
       }
     },
     async addSlot(lotId) {
@@ -391,12 +391,12 @@ export default {
           lot.total += 1;
           await this.fetchLots();
           console.log('Slot added:', data);
-          alert('Slot added successfully!');
+          console.log('Slot added successfully!');
         } else {
-          alert(data.error || 'Failed to add slot');
+          console.error('Failed to add slot:', data.error);
         }
       } catch (err) {
-        alert('Server error: ' + err.message);
+        console.error('Server error:', err.message);
       }
     },
     async deleteSlot(lotId, slotNumber) {
@@ -410,10 +410,10 @@ export default {
           this.closeSlotModal();
           await this.fetchLots(); // Refresh lots and slots
         } else {
-          alert(data.error || 'Failed to delete slot');
+          console.error('Failed to delete slot:', data.error);
         }
       } catch (err) {
-        alert('Server error');
+        console.error('Server error');
       }
     },
     openSlotModal(lot, slot) {
