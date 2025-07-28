@@ -1,0 +1,73 @@
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #e0f7fa;
+    padding: 20px;
+  }
+  
+  .summary-container {
+    width: 100%;
+    max-width: 900px;
+  }
+  
+  .summary-header {
+    background: linear-gradient(90deg, #26a69a, #4dd0e1);
+    color: white;
+    padding: 15px;
+    border-radius: 10px 10px 0 0;
+    margin-bottom: 0;
+    text-align: center;
+  }
+  
+  .summary-header h2 {
+    font-size: 18px;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 500;
+    margin: 0;
+    color: white;
+  }
+  
+  .summary-card {
+    background-color: white;
+    padding: 15px;
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  }
+  
+  .chart-container {
+    margin-bottom: 20px;
+  }
+  
+  .chart-container h4 {
+    font-size: 16px;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 500;
+    color: #26a69a;
+    margin-bottom: 10px;
+  }
+  
+  #chart1, #chart2, #chart3 {
+    height: 300px;
+    width: 100%;
+  }
+  
+  @media (max-width: 600px) {
+    .summary-container {
+      max-width: 95%;
+      padding: 0;
+    }
+    .summary-header h2 {
+      font-size: 16px;
+    }
+    .summary-card {
+      padding: 10px;
+    }
+    .chart-container h4 {
+      font-size: 14px;
+    }
+    #chart1, #chart2, #chart3 {
+      height: 200px;
+    }
+  }
